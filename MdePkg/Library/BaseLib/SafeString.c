@@ -14,9 +14,9 @@
 
 #include "BaseLibInternals.h"
 
-#define RSIZE_MAX  (PcdGet32 (PcdMaximumUnicodeStringLength))
-
-#define ASCII_RSIZE_MAX  (PcdGet32 (PcdMaximumAsciiStringLength))
+//REVIEW_REHABMAN: investigate why this is needed (PcdGet32 in this case not working correctly/build issue)
+#define RSIZE_MAX  0 //(PcdGet32 (PcdMaximumUnicodeStringLength))
+#define ASCII_RSIZE_MAX  0 //(PcdGet32 (PcdMaximumAsciiStringLength))
 
 #define SAFE_STRING_CONSTRAINT_CHECK(Expression, Status)  \
   do { \

@@ -14,6 +14,12 @@
 
 #include "BaseLibInternals.h"
 
+//REVIEW_REHABMAN: investigate why this is needed (PcdGet32 in this case not working correctly/build issue)
+#undef _PCD_GET_MODE_32_PcdMaximumUnicodeStringLength
+#define _PCD_GET_MODE_32_PcdMaximumUnicodeStringLength 0
+#undef _PCD_GET_MODE_32_PcdMaximumAsciiStringLength
+#define _PCD_GET_MODE_32_PcdMaximumAsciiStringLength 0
+
 #ifndef DISABLE_NEW_DEPRECATED_INTERFACES
 
 /**
