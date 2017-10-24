@@ -794,8 +794,8 @@ ToggleEndOfDxeStatus (
 //
 
 /**
-   Enable NULL pointer detection
-*/
+   Enable NULL pointer detection.
+**/
 VOID
 EnableNullDetection (
   VOID
@@ -806,7 +806,7 @@ EnableNullDetection (
 
   if (((PcdGet8 (PcdNullPointerDetectionPropertyMask) & BIT0) == 0)
       ||
-      ((mEndOfDxe == TRUE)  &&
+      ((mEndOfDxe)  &&
        ((PcdGet8 (PcdNullPointerDetectionPropertyMask) & (BIT7|BIT0))
         == (BIT7|BIT0)))
      ) {
@@ -844,8 +844,8 @@ EnableNullDetection (
 }
 
 /**
-   Disable NULL pointer detection
-*/
+   Disable NULL pointer detection.
+**/
 VOID
 DisableNullDetection (
   VOID
@@ -856,7 +856,7 @@ DisableNullDetection (
 
   if (((PcdGet8 (PcdNullPointerDetectionPropertyMask) & BIT0) == 0)
       ||
-      ((mEndOfDxe == TRUE)  &&
+      ((mEndOfDxe)  &&
        ((PcdGet8 (PcdNullPointerDetectionPropertyMask) & (BIT7|BIT0))
         == (BIT7|BIT0)))
      ) {
