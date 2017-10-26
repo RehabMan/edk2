@@ -124,6 +124,12 @@ LongModeStart:
     cmp        qword [edi], 1       ; ApInitConfig
     jnz        GetApicId
 
+    ; Increment the number of APs executing here as early as possible
+    ; This is decremented in C code when AP is finished executing
+    mov        edi, esi
+    add        edi, NumApsExecutingLocation
+    lock inc   dword [edi]
+
     ; AP init
     mov        edi, esi
     add        edi, LockLocation
@@ -134,7 +140,7 @@ TestLock:
     cmp        rax, NotVacantFlag
     jz         TestLock
 
-    lea        ecx, [esi + NumApsExecutingLocation]
+    lea        ecx, [esi + ApIndexLocation]
     inc        dword [ecx]
     mov        ebx, [ecx]
 
@@ -206,7 +212,7 @@ CProcedureInvoke:
     call       rax               ; Call assembly function to initialize FPU per UEFI spec
     add        rsp, 20h
 
-    mov        edx, ebx          ; edx is NumApsExecuting
+    mov        edx, ebx          ; edx is ApIndex
     mov        ecx, esi
     add        ecx, LockLocation ; rcx is address of exchange info data buffer
 

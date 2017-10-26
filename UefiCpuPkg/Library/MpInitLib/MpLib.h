@@ -169,13 +169,14 @@ typedef struct {
   IA32_DESCRIPTOR       IdtrProfile;
   UINTN                 BufferStart;
   UINTN                 ModeOffset;
-  UINTN                 NumApsExecuting;
+  UINTN                 ApIndex;
   UINTN                 CodeSegment;
   UINTN                 DataSegment;
   UINTN                 EnableExecuteDisable;
   UINTN                 Cr3;
   UINTN                 InitFlag;
   CPU_INFO_IN_HOB       *CpuInfo;
+  UINTN                 NumApsExecuting;
   CPU_MP_DATA           *CpuMpData;
   UINTN                 InitializeFloatingPointUnitsAddress;
 } MP_CPU_EXCHANGE_INFO;

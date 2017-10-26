@@ -542,7 +542,7 @@ VOID
 EFIAPI
 ApWakeupFunction (
   IN MP_CPU_EXCHANGE_INFO      *ExchangeInfo,
-  IN UINTN                     NumApsExecuting
+  IN UINTN                     ApIndex
   )
 {
   CPU_MP_DATA                *CpuMpData;
@@ -574,7 +574,7 @@ ApWakeupFunction (
       // Add CPU number
       //
       InterlockedIncrement ((UINT32 *) &CpuMpData->CpuCount);
-      ProcessorNumber = NumApsExecuting;
+      ProcessorNumber = ApIndex;
       //
       // This is first time AP wakeup, get BIST information from AP stack
       //
@@ -662,6 +662,7 @@ ApWakeupFunction (
     // AP finished executing C code
     //
     InterlockedIncrement ((UINT32 *) &CpuMpData->FinishedCount);
+    InterlockedDecrement ((UINT32 *) &CpuMpData->MpCpuExchangeInfo->NumApsExecuting);
 
     //
     // Place AP is specified loop mode
@@ -764,6 +765,7 @@ FillExchangeInfoData (
   ExchangeInfo->Cr3             = AsmReadCr3 ();
 
   ExchangeInfo->CFunction       = (UINTN) ApWakeupFunction;
+  ExchangeInfo->ApIndex         = 0;
   ExchangeInfo->NumApsExecuting = 0;
   ExchangeInfo->InitFlag        = (UINTN) CpuMpData->InitFlag;
   ExchangeInfo->CpuInfo         = (CPU_INFO_IN_HOB *) (UINTN) CpuMpData->CpuInfoInHob;
@@ -934,13 +936,19 @@ WakeUpAP (
     }
     if (CpuMpData->InitFlag == ApInitConfig) {
       //
-      // Wait for all potential APs waken up in one specified period
+      // Wait for one potential AP waken up in one specified period
       //
-      TimedWaitForApFinish (
-        CpuMpData,
-        PcdGet32 (PcdCpuMaxLogicalProcessorNumber) - 1,
-        PcdGet32 (PcdCpuApInitTimeOutInMicroSeconds)
-        );
+      if (CpuMpData->CpuCount == 0) {
+        TimedWaitForApFinish (
+          CpuMpData,
+          PcdGet32 (PcdCpuMaxLogicalProcessorNumber) - 1,
+          PcdGet32 (PcdCpuApInitTimeOutInMicroSeconds)
+          );
+      }
+
+      while (CpuMpData->MpCpuExchangeInfo->NumApsExecuting != 0) {
+        CpuPause();
+      }
     } else {
       //
       // Wait all APs waken up if this is not the 1st broadcast of SIPI
