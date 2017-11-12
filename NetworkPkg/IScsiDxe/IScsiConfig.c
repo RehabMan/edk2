@@ -541,6 +541,7 @@ IScsiConvertAttemptConfigDataToIfrNvData (
     IScsiIpToStr (&Ip, FALSE, IfrNvData->SubnetMask);
     CopyMem (&Ip.v4, &SessionConfigData->Gateway, sizeof (EFI_IPv4_ADDRESS));
     IScsiIpToStr (&Ip, FALSE, IfrNvData->Gateway);
+    ZeroMem (IfrNvData->TargetIp, sizeof (IfrNvData->TargetIp));
     if (SessionConfigData->TargetIp.v4.Addr[0] != '\0') {
       CopyMem (&Ip.v4, &SessionConfigData->TargetIp, sizeof (EFI_IPv4_ADDRESS));
       IScsiIpToStr (&Ip, FALSE, IfrNvData->TargetIp);
@@ -3595,6 +3596,10 @@ IScsiFormCallback (
       switch (Value->u8) {
       case IP_MODE_IP6:
         NicInfo = IScsiGetNicInfoByIndex (Private->Current->NicIndex); 
+        if(NicInfo == NULL) {
+          break;
+        }
+
         if(!NicInfo->Ipv6Available) {			
   	      //
           // Current NIC doesn't Support IPv6, hence use IPv4.    

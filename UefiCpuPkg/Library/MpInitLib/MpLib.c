@@ -536,7 +536,7 @@ InitializeApData (
   This function will be called from AP reset code if BSP uses WakeUpAP.
 
   @param[in] ExchangeInfo     Pointer to the MP exchange info buffer
-  @param[in] NumApsExecuting  Number of current executing AP
+  @param[in] ApIndex          Number of current executing AP
 **/
 VOID
 EFIAPI
@@ -936,15 +936,20 @@ WakeUpAP (
     }
     if (CpuMpData->InitFlag == ApInitConfig) {
       //
-      // Wait for one potential AP waken up in one specified period
+      // Here support two methods to collect AP count through adjust
+      // PcdCpuApInitTimeOutInMicroSeconds values.
       //
-      if (CpuMpData->CpuCount == 0) {
-        TimedWaitForApFinish (
-          CpuMpData,
-          PcdGet32 (PcdCpuMaxLogicalProcessorNumber) - 1,
-          PcdGet32 (PcdCpuApInitTimeOutInMicroSeconds)
-          );
-      }
+      // one way is set a value to just let the first AP to start the
+      // initialization, then through the later while loop to wait all Aps
+      // finsh the initialization.
+      // The other way is set a value to let all APs finished the initialzation.
+      // In this case, the later while loop is useless.
+      //
+      TimedWaitForApFinish (
+        CpuMpData,
+        PcdGet32 (PcdCpuMaxLogicalProcessorNumber) - 1,
+        PcdGet32 (PcdCpuApInitTimeOutInMicroSeconds)
+        );
 
       while (CpuMpData->MpCpuExchangeInfo->NumApsExecuting != 0) {
         CpuPause();
