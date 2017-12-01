@@ -1,7 +1,7 @@
 /** @file
   Supporting functions implementaion for PCI devices management.
 
-Copyright (c) 2006 - 2017, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2015, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -21,72 +21,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 LIST_ENTRY  mPciDevicePool;
 
 /**
- Disable Bus Master Enable bit in all devices in the list.
-
- @param Devices  A device list.
-**/
-VOID
-DisableBmeOnTree (
-  IN LIST_ENTRY      *Devices
-  )
-{
-  LIST_ENTRY      *Link;
-  PCI_IO_DEVICE   *PciIoDevice;
-  UINT16           Command;
-
-  for ( Link = GetFirstNode (Devices)
-      ; !IsNull (Devices, Link)
-      ; Link = GetNextNode (Devices, Link)
-      ) {
-    PciIoDevice = PCI_IO_DEVICE_FROM_LINK (Link);
-    //
-    // Turn off all children's Bus Master, if any
-    //
-    DisableBmeOnTree (&PciIoDevice->ChildList);
-
-    //
-    // If this is a device that supports BME, disable BME on this device.
-    //
-    if ((PciIoDevice->Supports & EFI_PCI_IO_ATTRIBUTE_BUS_MASTER) != 0) {
-      PCI_READ_COMMAND_REGISTER(PciIoDevice, &Command);
-      if ((Command & EFI_PCI_COMMAND_BUS_MASTER) != 0) {
-        Command &= ~EFI_PCI_COMMAND_BUS_MASTER;
-        PCI_SET_COMMAND_REGISTER (PciIoDevice, Command);
-        DEBUG ((
-          DEBUG_INFO,"  %02x   %02x      %02x         %04x\n",
-          PciIoDevice->BusNumber, PciIoDevice->DeviceNumber, PciIoDevice->FunctionNumber,
-          Command
-          ));
-      }
-    }
-  }
-}
-
-/**
-  Exit Boot Services Event notification handler.
-
-  Disable Bus Master on any that were enabled during BDS.
-
-  @param[in]  Event     Event whose notification function is being invoked.
-  @param[in]  Context   Pointer to the notification function's context.
-
-**/
-VOID
-EFIAPI
-OnExitBootServices (
-  IN      EFI_EVENT                 Event,
-  IN      VOID                      *Context
-  )
-{
-  DEBUG ((
-    DEBUG_INFO,
-    "PciBus: Disable Bus Master of all devices...\n"
-    "  Bus# Device# Function#  NewCommand\n"
-    ));
-  DisableBmeOnTree(&mPciDevicePool);
-}
-
-/**
   Initialize the PCI devices pool.
 
 **/
@@ -95,27 +29,7 @@ InitializePciDevicePool (
   VOID
   )
 {
-  EFI_EVENT   ExitBootServicesEvent;
-  EFI_STATUS  Status;
-
   InitializeListHead (&mPciDevicePool);
-
-  //
-  // DisableBME on ExitBootServices should be synchonized with any IOMMU ExitBootServices routine.
-  // DisableBME should be run before the IOMMU protections are disabled.
-  // One way to do this is to ensure that the IOMMU ExitBootServices callback runs at TPL_CALLBACK.
-  //
-  Status = gBS->CreateEventEx (
-                  EVT_NOTIFY_SIGNAL,
-                  TPL_NOTIFY,
-                  OnExitBootServices,
-                  NULL,
-                  &gEfiEventExitBootServicesGuid,
-                  &ExitBootServicesEvent
-                  );
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "PciBus: Unable to hook ExitBootServices event - %r\n", Status));
-  }
 }
 
 /**
@@ -797,12 +711,7 @@ StartPciDevicesOnBridge (
                              0,
                              &Supports
                              );
-        //
-        // By default every bridge's IO and MMIO spaces are enabled.
-        // Bridge's Bus Master will be enabled when any device behind it requests
-        // to enable Bus Master.
-        //
-        Supports &= (UINT64) (EFI_PCI_IO_ATTRIBUTE_IO | EFI_PCI_IO_ATTRIBUTE_MEMORY);
+        Supports &= (UINT64)EFI_PCI_DEVICE_ENABLE;
         PciIoDevice->PciIo.Attributes (
                              &(PciIoDevice->PciIo),
                              EfiPciIoAttributeOperationEnable,
@@ -854,12 +763,7 @@ StartPciDevicesOnBridge (
                              0,
                              &Supports
                              );
-        //
-        // By default every bridge's IO and MMIO spaces are enabled.
-        // Bridge's Bus Master will be enabled when any device behind it requests
-        // to enable Bus Master.
-        //
-        Supports &= (UINT64) (EFI_PCI_IO_ATTRIBUTE_IO | EFI_PCI_IO_ATTRIBUTE_MEMORY);
+        Supports &= (UINT64)EFI_PCI_DEVICE_ENABLE;
         PciIoDevice->PciIo.Attributes (
                              &(PciIoDevice->PciIo),
                              EfiPciIoAttributeOperationEnable,

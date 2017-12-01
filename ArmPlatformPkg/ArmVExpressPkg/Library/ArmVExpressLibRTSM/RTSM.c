@@ -21,6 +21,19 @@
 
 #include <ArmPlatform.h>
 
+/**
+  Return the core per cluster. The method may differ per core type
+
+  This function might be called from assembler before any stack is set.
+
+  @return   Return the core count per cluster
+
+**/
+UINTN
+ArmGetCpuCountPerCluster (
+  VOID
+  );
+
 ARM_CORE_INFO mVersatileExpressMpCoreInfoTable[] = {
   {
     // Cluster 0, Core 0
@@ -140,20 +153,6 @@ ArmPlatformInitialize (
   MmioOr32 (SP810_CTRL_BASE, BIT8);
 
   return RETURN_SUCCESS;
-}
-
-/**
-  Initialize the system (or sometimes called permanent) memory
-
-  This memory is generally represented by the DRAM.
-
-**/
-VOID
-ArmPlatformInitializeSystemMemory (
-  VOID
-  )
-{
-  // Nothing to do here
 }
 
 EFI_STATUS

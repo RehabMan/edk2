@@ -66,8 +66,9 @@ SerialReset (
                            value of DefaultStopBits will use the device's default number of
                            stop bits.
 
-  @retval EFI_SUCCESS      The device was reset.
-  @retval EFI_DEVICE_ERROR The serial device could not be reset.
+  @retval EFI_SUCCESS           The device was reset.
+  @retval EFI_INVALID_PARAMETER One or more attributes has an unsupported value.
+  @retval EFI_DEVICE_ERROR      The serial device is not functioning correctly.
 
 **/
 EFI_STATUS
@@ -239,6 +240,15 @@ SerialReset (
                    (EFI_STOP_BITS_TYPE) This->Mode->StopBits
                    );
 
+  //
+  // The serial device may not support some of the attributes. To prevent
+  // later failure, always return EFI_SUCCESS when SetAttributes is returning
+  // EFI_INVALID_PARAMETER.
+  //
+  if (Status == EFI_INVALID_PARAMETER) {
+    return EFI_SUCCESS;
+  }
+
   return Status;
 }
 
@@ -264,8 +274,9 @@ SerialReset (
                            value of DefaultStopBits will use the device's default number of
                            stop bits.
 
-  @retval EFI_SUCCESS      The device was reset.
-  @retval EFI_DEVICE_ERROR The serial device could not be reset.
+  @retval EFI_SUCCESS           The device was reset.
+  @retval EFI_INVALID_PARAMETER One or more attributes has an unsupported value.
+  @retval EFI_DEVICE_ERROR      The serial device is not functioning correctly.
 
 **/
 EFI_STATUS
@@ -323,8 +334,10 @@ SerialSetAttributes (
       DataBits = OriginalDataBits;
       StopBits = OriginalStopBits;
       Status = EFI_SUCCESS;
+    } else if (Status == EFI_INVALID_PARAMETER || Status == EFI_UNSUPPORTED) {
+      return EFI_INVALID_PARAMETER;
     } else {
-      return Status;
+      return EFI_DEVICE_ERROR;
     }
   }
 
