@@ -81,7 +81,6 @@
   gEdkiiSmmExitBootServicesProtocolGuid         ## SOMETIMES_PRODUCES
   gEdkiiSmmLegacyBootProtocolGuid               ## SOMETIMES_PRODUCES
   gEdkiiSmmReadyToBootProtocolGuid              ## PRODUCES
-  gEdkiiSmmEndOfS3ResumeProtocolGuid            ## SOMETIMES_PRODUCES
 
   gEfiSmmSwDispatch2ProtocolGuid                ## SOMETIMES_CONSUMES
   gEfiSmmSxDispatch2ProtocolGuid                ## SOMETIMES_CONSUMES
@@ -93,6 +92,7 @@
   gEfiSmmUsbDispatch2ProtocolGuid               ## SOMETIMES_CONSUMES
   gEfiSmmCpuProtocolGuid                        ## SOMETIMES_CONSUMES
   gEdkiiSmmMemoryAttributeProtocolGuid          ## CONSUMES
+  gEfiSmmSxDispatch2ProtocolGuid                ## SOMETIMES_CONSUMES
 
 [Pcd]
   gEfiMdeModulePkgTokenSpaceGuid.PcdLoadFixAddressSmmCodePageNumber     ## SOMETIMES_CONSUMES
@@ -123,6 +123,7 @@
   ## SOMETIMES_PRODUCES   ## GUID # Install protocol
   ## SOMETIMES_PRODUCES   ## GUID # SmiHandlerRegister
   gSmiHandlerProfileGuid
+  gEdkiiEndOfS3ResumeGuid ## SOMETIMES_PRODUCES ## GUID # Install protocol
 
 [UserExtensions.TianoCore."ExtraFiles"]
   PiSmmCoreExtra.uni
