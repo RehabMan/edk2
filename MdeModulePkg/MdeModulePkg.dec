@@ -3,7 +3,7 @@
 # It also provides the definitions(including PPIs/PROTOCOLs/GUIDs and library classes)
 # and libraries instances, which are used for those modules.
 #
-# Copyright (c) 2007 - 2017, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2007 - 2018, Intel Corporation. All rights reserved.<BR>
 # Copyright (c) 2016, Linaro Ltd. All rights reserved.<BR>
 # (C) Copyright 2016 Hewlett Packard Enterprise Development LP<BR>
 # Copyright (c) 2017, AMD Incorporated. All rights reserved.<BR>
@@ -24,7 +24,7 @@
   PACKAGE_NAME                   = MdeModulePkg
   PACKAGE_UNI_FILE               = MdeModulePkg.uni
   PACKAGE_GUID                   = BA0D78D6-2CAF-414b-BD4D-B6762A894288
-  PACKAGE_VERSION                = 0.97
+  PACKAGE_VERSION                = 0.98
 
 [Includes]
   Include
@@ -562,6 +562,9 @@
   ## Include/Protocol/SmmMemoryAttribute.h
   gEdkiiSmmMemoryAttributeProtocolGuid = { 0x69b792ea, 0x39ce, 0x402d, { 0xa2, 0xa6, 0xf7, 0x21, 0xde, 0x35, 0x1d, 0xfe } }
 
+  ## Include/Protocol/SdMmcOverride.h
+  gEdkiiSdMmcOverrideProtocolGuid = { 0xeaf9e3c1, 0xc9cd, 0x46db, { 0xa5, 0xe5, 0x5a, 0x12, 0x4c, 0x83, 0x23, 0x23 } }
+
 #
 # [Error.gEfiMdeModulePkgTokenSpaceGuid]
 #   0x80000001 | Invalid value provided.
@@ -893,6 +896,12 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdInitValueInTempStack|0x5AA55AA5|UINT32|0x30001051
 
   ## Indicates which type allocation need guard page.
+  #
+  # If a bit is set, a head guard page and a tail guard page will be added just
+  # before and after corresponding type of pages allocated if there's enough
+  # free pages for all of them. The page allocation for the type related to
+  # cleared bits keeps the same as ususal.
+  #
   # Below is bit mask for this PCD: (Order is same as UEFI spec)<BR>
   #  EfiReservedMemoryType             0x0000000000000001<BR>
   #  EfiLoaderCode                     0x0000000000000002<BR>
@@ -916,6 +925,12 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdHeapGuardPageType|0x0|UINT64|0x30001052
 
   ## Indicates which type allocation need guard page.
+  #
+  # If a bit is set, a head guard page and a tail guard page will be added just
+  # before and after corresponding type of pages which the allocated pool occupies,
+  # if there's enough free memory for all of them. The pool allocation for the
+  # type related to cleared bits keeps the same as ususal.
+  #
   # Below is bit mask for this PCD: (Order is same as UEFI spec)<BR>
   #  EfiReservedMemoryType             0x0000000000000001<BR>
   #  EfiLoaderCode                     0x0000000000000002<BR>
@@ -939,13 +954,17 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdHeapGuardPoolType|0x0|UINT64|0x30001053
 
   ## This mask is to control Heap Guard behavior.
+  # Note that due to the limit of pool memory implementation and the alignment
+  # requirement of UEFI spec, BIT7 is a try-best setting which cannot guarantee
+  # that the returned pool is exactly adjacent to head guard page or tail guard
+  # page.
   #   BIT0 - Enable UEFI page guard.<BR>
   #   BIT1 - Enable UEFI pool guard.<BR>
   #   BIT2 - Enable SMM page guard.<BR>
   #   BIT3 - Enable SMM pool guard.<BR>
   #   BIT7 - The direction of Guard Page for Pool Guard.
-  #          0 - The returned pool is adjacent to the bottom guard page.<BR>
-  #          1 - The returned pool is adjacent to the top guard page.<BR>
+  #          0 - The returned pool is near the tail guard page.<BR>
+  #          1 - The returned pool is near the head guard page.<BR>
   # @Prompt The Heap Guard feature mask
   gEfiMdeModulePkgTokenSpaceGuid.PcdHeapGuardPropertyMask|0x0|UINT8|0x30001054
 
@@ -1902,6 +1921,17 @@
   ## This dynamic PCD holds the information if there is any test key used by the platform.
   # @Prompt If there is any test key used by the platform.
   gEfiMdeModulePkgTokenSpaceGuid.PcdTestKeyUsed|FALSE|BOOLEAN|0x00030003
+
+[PcdsDynamicEx]
+  ## This dynamic PCD enables the default variable setting.
+  #  Its value is the default store ID value. The default value is zero as Standard default.
+  #  When its value is set in PEI, it will trig the default setting to be applied as the default EFI variable.
+  # @Prompt NV Storage DefaultId
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSetNvStoreDefaultId|0x0|UINT16|0x00030004
+
+  ## This dynamic PCD holds the DynamicHii PCD value. Its value is the auto generated.
+  # @Prompt NV Storage Default Value Buffer
+  gEfiMdeModulePkgTokenSpaceGuid.PcdNvStoreDefaultValueBuffer|{0x0}|VOID*|0x00030005
 
 [UserExtensions.TianoCore."ExtraFiles"]
   MdeModulePkgExtra.uni

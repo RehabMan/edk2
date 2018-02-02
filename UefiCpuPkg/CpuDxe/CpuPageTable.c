@@ -90,70 +90,6 @@ PAGE_ATTRIBUTE_TABLE mPageAttributeTable[] = {
 PAGE_TABLE_POOL   *mPageTablePool = NULL;
 
 /**
-  Enable write protection function for AP.
-
-  @param[in,out] Buffer  The pointer to private data buffer.
-**/
-VOID
-EFIAPI
-SyncCpuEnableWriteProtection (
-  IN OUT VOID *Buffer
-  )
-{
-  AsmWriteCr0 (AsmReadCr0 () | BIT16);
-}
-
-/**
-  CpuFlushTlb function for AP.
-
-  @param[in,out] Buffer  The pointer to private data buffer.
-**/
-VOID
-EFIAPI
-SyncCpuFlushTlb (
-  IN OUT VOID *Buffer
-  )
-{
-  CpuFlushTlb();
-}
-
-/**
-  Sync memory page attributes for AP.
-
-  @param[in] Procedure            A pointer to the function to be run on enabled APs of
-                                  the system.
-**/
-VOID
-SyncMemoryPageAttributesAp (
-  IN EFI_AP_PROCEDURE            Procedure
-  )
-{
-  EFI_STATUS                Status;
-  EFI_MP_SERVICES_PROTOCOL  *MpService;
-
-  Status = gBS->LocateProtocol (
-                  &gEfiMpServiceProtocolGuid,
-                  NULL,
-                  (VOID **)&MpService
-                  );
-  //
-  // Synchronize the update with all APs
-  //
-  if (!EFI_ERROR (Status)) {
-    Status = MpService->StartupAllAPs (
-                          MpService,          // This
-                          Procedure,          // Procedure
-                          FALSE,              // SingleThread
-                          NULL,               // WaitEvent
-                          0,                  // TimeoutInMicrosecsond
-                          NULL,               // ProcedureArgument
-                          NULL                // FailedCpuList
-                          );
-    ASSERT (Status == EFI_SUCCESS || Status == EFI_NOT_STARTED || Status == EFI_NOT_READY);
-  }
-}
-
-/**
   Return current paging context.
 
   @param[in,out]  PagingContext     The paging context.
@@ -528,7 +464,7 @@ SplitPage (
       for (Index = 0; Index < SIZE_4KB / sizeof(UINT64); Index++) {
         NewPageEntry[Index] = (BaseAddress + SIZE_4KB * Index) | AddressEncMask | ((*PageEntry) & PAGE_PROGATE_BITS);
       }
-      (*PageEntry) = (UINT64)(UINTN)NewPageEntry | AddressEncMask | ((*PageEntry) & PAGE_PROGATE_BITS);
+      (*PageEntry) = (UINT64)(UINTN)NewPageEntry | AddressEncMask | ((*PageEntry) & PAGE_ATTRIBUTE_BITS);
       return RETURN_SUCCESS;
     } else {
       return RETURN_UNSUPPORTED;
@@ -549,7 +485,7 @@ SplitPage (
       for (Index = 0; Index < SIZE_4KB / sizeof(UINT64); Index++) {
         NewPageEntry[Index] = (BaseAddress + SIZE_2MB * Index) | AddressEncMask | IA32_PG_PS | ((*PageEntry) & PAGE_PROGATE_BITS);
       }
-      (*PageEntry) = (UINT64)(UINTN)NewPageEntry | AddressEncMask | ((*PageEntry) & PAGE_PROGATE_BITS);
+      (*PageEntry) = (UINT64)(UINTN)NewPageEntry | AddressEncMask | ((*PageEntry) & PAGE_ATTRIBUTE_BITS);
       return RETURN_SUCCESS;
     } else {
       return RETURN_UNSUPPORTED;
@@ -575,20 +511,6 @@ IsReadOnlyPageWriteProtected (
 }
 
 /**
-  Disable write protection function for AP.
-
-  @param[in,out] Buffer  The pointer to private data buffer.
-**/
-VOID
-EFIAPI
-SyncCpuDisableWriteProtection (
-  IN OUT VOID *Buffer
-  )
-{
-  AsmWriteCr0 (AsmReadCr0() & ~BIT16);
-}
-
-/**
  Disable Write Protect on pages marked as read-only.
 **/
 VOID
@@ -597,7 +519,6 @@ DisableReadOnlyPageWriteProtect (
   )
 {
   AsmWriteCr0 (AsmReadCr0() & ~BIT16);
-  SyncMemoryPageAttributesAp (SyncCpuDisableWriteProtection);
 }
 
 /**
@@ -609,7 +530,6 @@ EnableReadOnlyPageWriteProtect (
   )
 {
   AsmWriteCr0 (AsmReadCr0() | BIT16);
-  SyncMemoryPageAttributesAp (SyncCpuEnableWriteProtection);
 }
 
 /**
@@ -697,6 +617,10 @@ ConvertMemoryPageAttributes (
     }
     if ((CurrentPagingContext.ContextData.Ia32.Attributes & PAGE_TABLE_LIB_PAGING_CONTEXT_IA32_X64_ATTRIBUTES_PAE) == 0) {
       DEBUG ((DEBUG_ERROR, "Non-PAE Paging!\n"));
+      return EFI_UNSUPPORTED;
+    }
+    if ((BaseAddress + Length) > BASE_4GB) {
+      DEBUG ((DEBUG_ERROR, "Beyond 4GB memory in 32-bit mode!\n"));
       return EFI_UNSUPPORTED;
     }
     break;
@@ -833,10 +757,13 @@ AssignMemoryPageAttributes (
   if (!EFI_ERROR(Status)) {
     if ((PagingContext == NULL) && IsModified) {
       //
-      // Flush TLB as last step
+      // Flush TLB as last step.
+      //
+      // Note: Since APs will always init CR3 register in HLT loop mode or do
+      // TLB flush in MWAIT loop mode, there's no need to flush TLB for them
+      // here.
       //
       CpuFlushTlb();
-      SyncMemoryPageAttributesAp (SyncCpuFlushTlb);
     }
   }
 
@@ -979,7 +906,7 @@ RefreshGcdMemoryAttributesFromPaging (
                         );
         ASSERT_EFI_ERROR (Status);
         DEBUG ((
-          DEBUG_INFO,
+          DEBUG_VERBOSE,
           "Updated memory space attribute: [%lu] %016lx - %016lx (%016lx -> %016lx)\r\n",
           (UINT64)Index, BaseAddress, BaseAddress + Length - 1,
           MemorySpaceMap[Index].Attributes,

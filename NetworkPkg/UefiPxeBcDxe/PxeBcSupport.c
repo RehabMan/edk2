@@ -257,8 +257,7 @@ PxeBcIcmpErrorDpcHandle (
     //
     // The return status should be recognized as EFI_ICMP_ERROR.
     //
-    gBS->SignalEvent (RxData->RecycleSignal);
-    goto ON_EXIT;
+    goto ON_RECYCLE;
   }
 
   if (EFI_IP4 (RxData->Header->SourceAddress) != 0 &&
@@ -268,25 +267,20 @@ PxeBcIcmpErrorDpcHandle (
     //
     // The source address of the received packet should be a valid unicast address.
     //
-    gBS->SignalEvent (RxData->RecycleSignal);
-    goto ON_EXIT;
+    goto ON_RECYCLE;
   }
 
   if (!EFI_IP4_EQUAL (&RxData->Header->DestinationAddress, &Mode->StationIp.v4)) {
     //
     // The destination address of the received packet should be equal to the host address.
     //
-    gBS->SignalEvent (RxData->RecycleSignal);
-    goto ON_EXIT;
+    goto ON_RECYCLE;
   }
-
-  if (RxData->Header->Protocol != EFI_IP_PROTO_ICMP) {
-    //
-    // The protocol value in the header of the receveid packet should be EFI_IP_PROTO_ICMP.
-    //
-    gBS->SignalEvent (RxData->RecycleSignal);
-    goto ON_EXIT;
-  }
+  
+  //
+  // The protocol has been configured to only receive ICMP packet.
+  //
+  ASSERT (RxData->Header->Protocol == EFI_IP_PROTO_ICMP);
 
   Type = *((UINT8 *) RxData->FragmentTable[0].FragmentBuffer);
 
@@ -298,8 +292,7 @@ PxeBcIcmpErrorDpcHandle (
     //
     // The type of the receveid ICMP message should be ICMP_ERROR_MESSAGE.
     //
-    gBS->SignalEvent (RxData->RecycleSignal);
-    goto ON_EXIT;
+    goto ON_RECYCLE;
   }
 
   //
@@ -325,6 +318,9 @@ PxeBcIcmpErrorDpcHandle (
     }
     IcmpError += CopiedLen;
   }
+
+ON_RECYCLE:
+  gBS->SignalEvent (RxData->RecycleSignal);
 
 ON_EXIT:
   Private->IcmpToken.Status = EFI_NOT_READY;
@@ -395,16 +391,14 @@ PxeBcIcmp6ErrorDpcHandle (
     //
     // The return status should be recognized as EFI_ICMP_ERROR.
     //
-    gBS->SignalEvent (RxData->RecycleSignal);
-    goto ON_EXIT;
+    goto ON_RECYCLE;
   }
 
   if (!NetIp6IsValidUnicast (&RxData->Header->SourceAddress)) {
     //
     // The source address of the received packet should be a valid unicast address.
     //
-    gBS->SignalEvent (RxData->RecycleSignal);
-    goto ON_EXIT;
+    goto ON_RECYCLE;
   }
 
   if (!NetIp6IsUnspecifiedAddr (&Mode->StationIp.v6) &&
@@ -412,17 +406,13 @@ PxeBcIcmp6ErrorDpcHandle (
     //
     // The destination address of the received packet should be equal to the host address.
     //
-    gBS->SignalEvent (RxData->RecycleSignal);
-    goto ON_EXIT;
+    goto ON_RECYCLE;
   }
 
-  if (RxData->Header->NextHeader != IP6_ICMP) {
-    //
-    // The nextheader in the header of the receveid packet should be IP6_ICMP.
-    //
-    gBS->SignalEvent (RxData->RecycleSignal);
-    goto ON_EXIT;
-  }
+  //
+  // The protocol has been configured to only receive ICMP packet.
+  //
+  ASSERT (RxData->Header->NextHeader == IP6_ICMP);
 
   Type = *((UINT8 *) RxData->FragmentTable[0].FragmentBuffer);
 
@@ -433,8 +423,7 @@ PxeBcIcmp6ErrorDpcHandle (
     //
     // The type of the receveid packet should be an ICMP6 error message.
     //
-    gBS->SignalEvent (RxData->RecycleSignal);
-    goto ON_EXIT;
+    goto ON_RECYCLE;
   }
 
   //
@@ -461,6 +450,9 @@ PxeBcIcmp6ErrorDpcHandle (
     Icmp6Error += CopiedLen;
   }
 
+ON_RECYCLE:
+  gBS->SignalEvent (RxData->RecycleSignal);
+  
 ON_EXIT:
   Private->Icmp6Token.Status = EFI_NOT_READY;
   Ip6->Receive (Ip6, &Private->Icmp6Token);

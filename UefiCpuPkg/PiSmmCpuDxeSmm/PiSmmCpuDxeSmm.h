@@ -1,7 +1,7 @@
 /** @file
 Agent Module to load other modules to deploy SMM Entry Vector for X86 CPU.
 
-Copyright (c) 2009 - 2017, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2009 - 2018, Intel Corporation. All rights reserved.<BR>
 Copyright (c) 2017, AMD Incorporated. All rights reserved.<BR>
 
 This program and the accompanying materials
@@ -507,14 +507,6 @@ VOID *
 InitGdt (
   IN  UINTN  Cr3,
   OUT UINTN  *GdtStepSize
-  );
-
-/**
-  This function sets GDT/IDT buffer to be RO and XP.
-**/
-VOID
-PatchGdtIdtMap (
-  VOID
   );
 
 /**
@@ -1165,5 +1157,23 @@ EdkiiSmmGetMemoryAttributes (
   IN  UINT64                                Length,
   IN  UINT64                                *Attributes
   );
+
+/**
+  This function fixes up the address of the global variable or function
+  referred in SmmInit assembly files to be the absoute address.
+**/
+VOID
+EFIAPI
+PiSmmCpuSmmInitFixupAddress (
+ );
+
+/**
+  This function fixes up the address of the global variable or function
+  referred in SmiEntry assembly files to be the absoute address.
+**/
+VOID
+EFIAPI
+PiSmmCpuSmiEntryFixupAddress (
+ );
 
 #endif

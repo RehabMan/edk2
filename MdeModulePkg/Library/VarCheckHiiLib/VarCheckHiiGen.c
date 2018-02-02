@@ -1,7 +1,7 @@
 /** @file
   Var Check Hii bin generation.
 
-Copyright (c) 2015 - 2017, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2015 - 2018, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -515,7 +515,7 @@ MergeHiiQuestion (
   UINT8                             *Ptr;
   UINT8                             *Ptr1;
   UINT8                             *Ptr2;
-  UINT16                            ArrayIndex;
+  UINTN                             ArrayIndex;
 
   //
   // Hii Question from Hii Database has high priority.
@@ -1064,7 +1064,7 @@ ParseHiiQuestion (
   )
 {
   VAR_CHECK_HII_QUESTION_HEADER *HiiQuestion;
-  UINT16                        ArrayIndex;
+  UINTN                         ArrayIndex;
 
   //
   // Currently only OneOf, CheckBox and Numeric can be stored in bit field.
@@ -1518,6 +1518,10 @@ BuildVarCheckHiiBin (
   //
   Data = AllocateRuntimeZeroPool (BinSize);
   ASSERT (Data != NULL);
+  //
+  // Make sure the allocated buffer for VarCheckHiiBin at required alignment.
+  //
+  ASSERT ((((UINTN) Data) & (HEADER_ALIGNMENT - 1)) == 0);
   DEBUG ((DEBUG_INFO, "VarCheckHiiBin - built at 0x%x\n", Data));
 
   //

@@ -218,6 +218,26 @@ VERIFY_SIZE_OF (__VERIFY_UINT32_ENUM_SIZE, 4);
   #endif
 #endif
 
+///
+/// Tell the code optimizer that the function will return twice.
+/// This prevents wrong optimizations which can cause bugs.
+///
+#ifndef RETURNS_TWICE
+  #if defined (__GNUC__) || defined (__clang__)
+    ///
+    /// Tell the code optimizer that the function will return twice.
+    /// This prevents wrong optimizations which can cause bugs.
+    ///
+    #define RETURNS_TWICE  __attribute__((returns_twice))
+  #else
+    ///
+    /// Tell the code optimizer that the function will return twice.
+    /// This prevents wrong optimizations which can cause bugs.
+    ///
+    #define RETURNS_TWICE
+  #endif
+#endif
+
 //
 // For symbol name in assembly code, an extra "_" is sometimes necessary
 //
@@ -375,6 +395,14 @@ struct _LIST_ENTRY {
 #define MAX_UINT32  ((UINT32)0xFFFFFFFF)
 #define MAX_INT64   ((INT64)0x7FFFFFFFFFFFFFFFULL)
 #define MAX_UINT64  ((UINT64)0xFFFFFFFFFFFFFFFFULL)
+
+///
+/// Minimum values for the signed UEFI Data Types
+///
+#define MIN_INT8   (((INT8)  -127) - 1)
+#define MIN_INT16  (((INT16) -32767) - 1)
+#define MIN_INT32  (((INT32) -2147483647) - 1)
+#define MIN_INT64  (((INT64) -9223372036854775807LL) - 1)
 
 #define  BIT0     0x00000001
 #define  BIT1     0x00000002

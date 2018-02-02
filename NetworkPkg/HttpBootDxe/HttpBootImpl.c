@@ -122,8 +122,9 @@ HttpBootStart (
   UINTN                Index;
   EFI_STATUS           Status;
   CHAR8                *Uri;
-  
 
+  Uri = NULL;
+  
   if (Private == NULL || FilePath == NULL) {
     return EFI_INVALID_PARAMETER;
   }
@@ -154,6 +155,9 @@ HttpBootStart (
       //
       Status = HttpBootStop (Private);
       if (EFI_ERROR (Status)) {
+        if (Uri != NULL) {
+          FreePool (Uri);
+        }
         return Status;
       }
     } else {
@@ -548,7 +552,7 @@ HttpBootDxeLoadFile (
 {
   HTTP_BOOT_PRIVATE_DATA        *Private;
   HTTP_BOOT_VIRTUAL_NIC         *VirtualNic;
-  BOOLEAN                       MediaPresent;
+  EFI_STATUS                    MediaStatus;
   BOOLEAN                       UsingIpv6;
   EFI_STATUS                    Status;
   HTTP_BOOT_IMAGE_TYPE          ImageType;
@@ -570,9 +574,9 @@ HttpBootDxeLoadFile (
   //
   // Check media status before HTTP boot start
   //
-  MediaPresent = TRUE;
-  NetLibDetectMedia (Private->Controller, &MediaPresent);
-  if (!MediaPresent) {
+  MediaStatus = EFI_SUCCESS;
+  NetLibDetectMediaWaitTimeout (Private->Controller, HTTP_BOOT_CHECK_MEDIA_WAITING_TIME, &MediaStatus);
+  if (MediaStatus != EFI_SUCCESS) {
     AsciiPrint ("\n  Error: Could not detect network connection.\n");
     return EFI_NO_MEDIA;
   }
@@ -707,6 +711,7 @@ HttpBootCallback (
           if (HttpHeader != NULL) {
             Print (L"\n  HTTP ERROR: Resource Redirected.\n  New Location: %a\n", HttpHeader->FieldValue);
           }
+          break; 
         }
       }
       

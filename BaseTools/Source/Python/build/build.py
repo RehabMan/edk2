@@ -2,7 +2,7 @@
 # build a platform or a module
 #
 #  Copyright (c) 2014, Hewlett-Packard Development Company, L.P.<BR>
-#  Copyright (c) 2007 - 2017, Intel Corporation. All rights reserved.<BR>
+#  Copyright (c) 2007 - 2018, Intel Corporation. All rights reserved.<BR>
 #
 #  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
@@ -26,6 +26,7 @@ import platform
 import traceback
 import encodings.ascii
 import itertools
+import multiprocessing
 
 from struct import *
 from threading import *
@@ -761,6 +762,8 @@ class Build():
         self.SkipAutoGen    = BuildOptions.SkipAutoGen
         self.Reparse        = BuildOptions.Reparse
         self.SkuId          = BuildOptions.SkuId
+        if self.SkuId:
+            GlobalData.gSKUID_CMD = self.SkuId
         self.ConfDirectory = BuildOptions.ConfDirectory
         self.SpawnMode      = True
         self.BuildReport    = BuildReport(BuildOptions.ReportFile, BuildOptions.ReportType)
@@ -769,7 +772,7 @@ class Build():
         self.AutoGenTime    = 0
         self.MakeTime       = 0
         self.GenFdsTime     = 0
-        GlobalData.BuildOptionPcd     = BuildOptions.OptionPcd
+        GlobalData.BuildOptionPcd     = BuildOptions.OptionPcd if BuildOptions.OptionPcd else {}
         #Set global flag for build mode
         GlobalData.gIgnoreSource = BuildOptions.IgnoreSources
         GlobalData.gUseHashCache = BuildOptions.UseHashCache
@@ -791,12 +794,18 @@ class Build():
             if not os.path.isabs(BinCacheSource):
                 BinCacheSource = mws.join(self.WorkspaceDir, BinCacheSource)
             GlobalData.gBinCacheSource = BinCacheSource
+        else:
+            if GlobalData.gBinCacheSource != None:
+                EdkLogger.error("build", OPTION_VALUE_INVALID, ExtraData="Invalid value of option --binary-source.")
 
         if GlobalData.gBinCacheDest:
             BinCacheDest = os.path.normpath(GlobalData.gBinCacheDest)
             if not os.path.isabs(BinCacheDest):
                 BinCacheDest = mws.join(self.WorkspaceDir, BinCacheDest)
             GlobalData.gBinCacheDest = BinCacheDest
+        else:
+            if GlobalData.gBinCacheDest != None:
+                EdkLogger.error("build", OPTION_VALUE_INVALID, ExtraData="Invalid value of option --binary-destination.")
 
         if self.ConfDirectory:
             # Get alternate Conf location, if it is absolute, then just use the absolute directory name
@@ -934,7 +943,10 @@ class Build():
                 self.ThreadNumber = int(self.ThreadNumber, 0)
 
         if self.ThreadNumber == 0:
-            self.ThreadNumber = 1
+            try:
+                self.ThreadNumber = multiprocessing.cpu_count()
+            except (ImportError, NotImplementedError):
+                self.ThreadNumber = 1
 
         if not self.PlatformFile:
             PlatformFile = self.TargetTxt.TargetTxtDictionary[DataType.TAB_TAT_DEFINES_ACTIVE_PLATFORM]

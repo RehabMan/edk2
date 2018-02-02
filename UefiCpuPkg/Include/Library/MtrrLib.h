@@ -1,7 +1,7 @@
 /** @file
   MTRR setting library
 
-  Copyright (c) 2008 - 2017, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2008 - 2018, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -157,7 +157,14 @@ GetFirmwareVariableMtrrCount (
   @retval RETURN_OUT_OF_RESOURCES   There are not enough system resources to
                                     modify the attributes of the memory
                                     resource range.
-  @retval RETURN_BUFFER_TOO_SMALL   The scratch buffer is too small for MTRR calculation.
+                                    Multiple memory range attributes setting by calling this API multiple
+                                    times may fail with status RETURN_OUT_OF_RESOURCES. It may not mean
+                                    the number of CPU MTRRs are too small to set such memory attributes.
+                                    Pass the multiple memory range attributes to one call of
+                                    MtrrSetMemoryAttributesInMtrrSettings() may succeed.
+  @retval RETURN_BUFFER_TOO_SMALL   The fixed internal scratch buffer is too small for MTRR calculation.
+                                    Caller should use MtrrSetMemoryAttributesInMtrrSettings() to specify
+                                    external scratch buffer.
 **/
 RETURN_STATUS
 EFIAPI
@@ -352,7 +359,14 @@ MtrrGetDefaultMemoryType (
                                     BaseAddress and Length cannot be modified.
   @retval RETURN_OUT_OF_RESOURCES   There are not enough system resources to modify the attributes of
                                     the memory resource range.
-  @retval RETURN_BUFFER_TOO_SMALL   The scratch buffer is too small for MTRR calculation.
+                                    Multiple memory range attributes setting by calling this API multiple
+                                    times may fail with status RETURN_OUT_OF_RESOURCES. It may not mean
+                                    the number of CPU MTRRs are too small to set such memory attributes.
+                                    Pass the multiple memory range attributes to one call of
+                                    MtrrSetMemoryAttributesInMtrrSettings() may succeed.
+  @retval RETURN_BUFFER_TOO_SMALL   The fixed internal scratch buffer is too small for MTRR calculation.
+                                    Caller should use MtrrSetMemoryAttributesInMtrrSettings() to specify
+                                    external scratch buffer.
 **/
 RETURN_STATUS
 EFIAPI

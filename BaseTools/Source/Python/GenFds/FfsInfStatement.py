@@ -237,6 +237,7 @@ class FfsInfStatement(FfsInfStatementClassObject):
         InfPcds = Inf.Pcds
         Platform = GenFdsGlobalVariable.WorkSpace.BuildObject[GenFdsGlobalVariable.ActivePlatform, self.CurrentArch, GenFdsGlobalVariable.TargetName, GenFdsGlobalVariable.ToolChainTag]
         FdfPcdDict = GenFdsGlobalVariable.FdfParser.Profile.PcdDict
+        PlatformPcds = Platform.Pcds
 
         # Workaround here: both build and GenFds tool convert the workspace path to lower case
         # But INF file path in FDF and DSC file may have real case characters.
@@ -422,7 +423,7 @@ class FfsInfStatement(FfsInfStatementClassObject):
     #   @param  FvParentAddr Parent Fv base address
     #   @retval string       Generated FFS file name
     #
-    def GenFfs(self, Dict = {}, FvChildAddr = [], FvParentAddr=None, IsMakefile=False):
+    def GenFfs(self, Dict = {}, FvChildAddr = [], FvParentAddr=None, IsMakefile=False, FvName=None):
         #
         # Parse Inf file get Module related information
         #

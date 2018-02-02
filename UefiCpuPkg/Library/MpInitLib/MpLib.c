@@ -1,7 +1,7 @@
 /** @file
   CPU MP Initialize Library common functions.
 
-  Copyright (c) 2016 - 2017, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2016 - 2018, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -330,6 +330,7 @@ SortApicId (
   CPU_INFO_IN_HOB   CpuInfo;
   UINT32            ApCount;
   CPU_INFO_IN_HOB   *CpuInfoInHob;
+  volatile UINT32   *StartupApSignal;
 
   ApCount = CpuMpData->CpuCount - 1;
   CpuInfoInHob = (CPU_INFO_IN_HOB *) (UINTN) CpuMpData->CpuInfoInHob;
@@ -354,6 +355,14 @@ SortApicId (
           sizeof (CPU_INFO_IN_HOB)
           );
         CopyMem (&CpuInfoInHob[Index1], &CpuInfo, sizeof (CPU_INFO_IN_HOB));
+
+        //
+        // Also exchange the StartupApSignal.
+        //
+        StartupApSignal = CpuMpData->CpuData[Index3].StartupApSignal;
+        CpuMpData->CpuData[Index3].StartupApSignal =
+          CpuMpData->CpuData[Index1].StartupApSignal;
+        CpuMpData->CpuData[Index1].StartupApSignal = StartupApSignal;
       }
     }
 
@@ -582,6 +591,10 @@ ApWakeupFunction (
   // We need to re-initialize them at here
   //
   ProgramVirtualWireMode ();
+  //
+  // Mask the LINT0 and LINT1 so that AP doesn't enter the system timer interrupt handler.
+  //
+  DisableLvtInterrupts ();
   SyncLocalApicTimerSetting (CpuMpData);
 
   CurrentApicMode = GetApicMode ();
@@ -626,6 +639,13 @@ ApWakeupFunction (
         // Restore AP's volatile registers saved
         //
         RestoreVolatileRegisters (&CpuMpData->CpuData[ProcessorNumber].VolatileRegisters, TRUE);
+      } else {
+        //
+        // The CPU driver might not flush TLB for APs on spot after updating
+        // page attributes. AP in mwait loop mode needs to take care of it when
+        // woken up.
+        //
+        CpuFlushTlb ();
       }
 
       if (GetApState (&CpuMpData->CpuData[ProcessorNumber]) == CpuStateReady) {
@@ -768,6 +788,8 @@ FillExchangeInfoData (
   )
 {
   volatile MP_CPU_EXCHANGE_INFO    *ExchangeInfo;
+  UINTN                            Size;
+  IA32_SEGMENT_DESCRIPTOR          *Selector;
 
   ExchangeInfo                  = CpuMpData->MpCpuExchangeInfo;
   ExchangeInfo->Lock            = 0;
@@ -797,6 +819,46 @@ FillExchangeInfoData (
   //
   AsmReadGdtr ((IA32_DESCRIPTOR *) &ExchangeInfo->GdtrProfile);
   AsmReadIdtr ((IA32_DESCRIPTOR *) &ExchangeInfo->IdtrProfile);
+
+  //
+  // Find a 32-bit code segment
+  //
+  Selector = (IA32_SEGMENT_DESCRIPTOR *)ExchangeInfo->GdtrProfile.Base;
+  Size = ExchangeInfo->GdtrProfile.Limit + 1;
+  while (Size > 0) {
+    if (Selector->Bits.L == 0 && Selector->Bits.Type >= 8) {
+      ExchangeInfo->ModeTransitionSegment =
+        (UINT16)((UINTN)Selector - ExchangeInfo->GdtrProfile.Base);
+      break;
+    }
+    Selector += 1;
+    Size -= sizeof (IA32_SEGMENT_DESCRIPTOR);
+  }
+
+  //
+  // Copy all 32-bit code and 64-bit code into memory with type of
+  // EfiBootServicesCode to avoid page fault if NX memory protection is enabled.
+  //
+  if (CpuMpData->WakeupBufferHigh != 0) {
+    Size = CpuMpData->AddressMap.RendezvousFunnelSize -
+           CpuMpData->AddressMap.ModeTransitionOffset;
+    CopyMem (
+      (VOID *)CpuMpData->WakeupBufferHigh,
+      CpuMpData->AddressMap.RendezvousFunnelAddress +
+      CpuMpData->AddressMap.ModeTransitionOffset,
+      Size
+      );
+
+    ExchangeInfo->ModeTransitionMemory = (UINT32)CpuMpData->WakeupBufferHigh;
+  } else {
+    ExchangeInfo->ModeTransitionMemory = (UINT32)
+      (ExchangeInfo->BufferStart + CpuMpData->AddressMap.ModeTransitionOffset);
+  }
+
+  ExchangeInfo->ModeHighMemory = ExchangeInfo->ModeTransitionMemory +
+                         (UINT32)ExchangeInfo->ModeOffset -
+                         (UINT32)CpuMpData->AddressMap.ModeTransitionOffset;
+  ExchangeInfo->ModeHighSegment = (UINT16)ExchangeInfo->CodeSegment;
 }
 
 /**
@@ -872,6 +934,10 @@ AllocateResetVector (
     CpuMpData->WakeupBuffer      = GetWakeupBuffer (ApResetVectorSize);
     CpuMpData->MpCpuExchangeInfo = (MP_CPU_EXCHANGE_INFO *) (UINTN)
                     (CpuMpData->WakeupBuffer + CpuMpData->AddressMap.RendezvousFunnelSize);
+    CpuMpData->WakeupBufferHigh  = GetModeTransitionBuffer (
+                                    CpuMpData->AddressMap.RendezvousFunnelSize -
+                                    CpuMpData->AddressMap.ModeTransitionOffset
+                                    );
   }
   BackupAndPrepareWakeupBuffer (CpuMpData);
 }
@@ -1498,7 +1564,7 @@ MpInitLibInitialize (
   //
   // Set BSP basic information
   //
-  InitializeApData (CpuMpData, 0, 0, CpuMpData->Buffer);
+  InitializeApData (CpuMpData, 0, 0, CpuMpData->Buffer + ApStackSize);
   //
   // Save assembly code information
   //
@@ -1767,6 +1833,7 @@ SwitchBSPWorker (
   ApicBaseMsr.Uint64 = AsmReadMsr64 (MSR_IA32_APIC_BASE);
   ApicBaseMsr.Bits.BSP = 1;
   AsmWriteMsr64 (MSR_IA32_APIC_BASE, ApicBaseMsr.Uint64);
+  ProgramVirtualWireMode ();
 
   //
   // Wait for old BSP finished AP task

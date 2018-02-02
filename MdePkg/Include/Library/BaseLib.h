@@ -4903,6 +4903,7 @@ MemoryFence (
   @retval 0 Indicates a return from SetJump().
 
 **/
+RETURNS_TWICE
 UINTN
 EFIAPI
 SetJump (
@@ -9057,7 +9058,7 @@ AsmRdRand64  (
   );
 
 /**
-  Load given selector into TR register
+  Load given selector into TR register.
 
   @param[in] Selector     Task segment selector
 **/

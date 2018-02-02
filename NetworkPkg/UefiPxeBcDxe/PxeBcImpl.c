@@ -1,7 +1,7 @@
 /** @file
   This implementation of EFI_PXE_BASE_CODE_PROTOCOL and EFI_LOAD_FILE_PROTOCOL.
 
-  Copyright (c) 2007 - 2017, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2007 - 2018, Intel Corporation. All rights reserved.<BR>
 
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
@@ -855,9 +855,17 @@ EfiPxeBcMtftp (
       (Filename == NULL) ||
       (BufferSize == NULL) ||
       (ServerIp == NULL) ||
-      ((BufferPtr == NULL) && DontUseBuffer) ||
       ((BlockSize != NULL) && (*BlockSize < PXE_MTFTP_DEFAULT_BLOCK_SIZE))) {
     return EFI_INVALID_PARAMETER;
+  }
+
+  if (Operation == EFI_PXE_BASE_CODE_TFTP_READ_FILE ||
+      Operation == EFI_PXE_BASE_CODE_TFTP_READ_DIRECTORY ||
+      Operation == EFI_PXE_BASE_CODE_MTFTP_READ_FILE ||
+      Operation == EFI_PXE_BASE_CODE_MTFTP_READ_DIRECTORY) {
+    if (BufferPtr == NULL && !DontUseBuffer) {
+      return EFI_INVALID_PARAMETER;
+    }
   }
 
   Config    = NULL;
@@ -2347,10 +2355,17 @@ EfiPxeLoadFile (
   EFI_PXE_BASE_CODE_PROTOCOL  *PxeBc;
   BOOLEAN                     UsingIpv6;
   EFI_STATUS                  Status;
-  BOOLEAN                     MediaPresent;
+  EFI_STATUS                  MediaStatus;
 
-  if (FilePath == NULL || !IsDevicePathEnd (FilePath)) {
+  if (This == NULL || BufferSize == NULL || FilePath == NULL || !IsDevicePathEnd (FilePath)) {
     return EFI_INVALID_PARAMETER;
+  }
+  
+  //
+  // Only support BootPolicy
+  //
+  if (!BootPolicy) {
+    return EFI_UNSUPPORTED;
   }
   
   VirtualNic = PXEBC_VIRTUAL_NIC_FROM_LOADFILE (This);
@@ -2359,23 +2374,12 @@ EfiPxeLoadFile (
   UsingIpv6  = FALSE;
   Status     = EFI_DEVICE_ERROR;
 
-  if (This == NULL || BufferSize == NULL) {
-    return EFI_INVALID_PARAMETER;
-  }
-
-  //
-  // Only support BootPolicy
-  //
-  if (!BootPolicy) {
-    return EFI_UNSUPPORTED;
-  }
-
   //
   // Check media status before PXE start
   //
-  MediaPresent = TRUE;
-  NetLibDetectMedia (Private->Controller, &MediaPresent);
-  if (!MediaPresent) {
+  MediaStatus = EFI_SUCCESS;
+  NetLibDetectMediaWaitTimeout (Private->Controller, PXEBC_CHECK_MEDIA_WAITING_TIME, &MediaStatus);
+  if (MediaStatus != EFI_SUCCESS) {
     return EFI_NO_MEDIA;
   }
 

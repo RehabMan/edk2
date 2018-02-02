@@ -1,6 +1,6 @@
 /** @file
 
-  Copyright (c) 2017, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2017 - 2018, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -17,6 +17,151 @@ UINT64                                  mBelow4GMemoryLimit;
 UINT64                                  mAbove4GMemoryLimit;
 
 EDKII_PLATFORM_VTD_POLICY_PROTOCOL      *mPlatformVTdPolicy;
+
+VTD_ACCESS_REQUEST                      *mAccessRequest = NULL;
+UINTN                                   mAccessRequestCount = 0;
+UINTN                                   mAccessRequestMaxCount = 0;
+
+/**
+  Append VTd Access Request to global.
+
+  @param[in]  Segment           The Segment used to identify a VTd engine.
+  @param[in]  SourceId          The SourceId used to identify a VTd engine and table entry.
+  @param[in]  BaseAddress       The base of device memory address to be used as the DMA memory.
+  @param[in]  Length            The length of device memory address to be used as the DMA memory.
+  @param[in]  IoMmuAccess       The IOMMU access.
+
+  @retval EFI_SUCCESS           The IoMmuAccess is set for the memory range specified by BaseAddress and Length.
+  @retval EFI_INVALID_PARAMETER BaseAddress is not IoMmu Page size aligned.
+  @retval EFI_INVALID_PARAMETER Length is not IoMmu Page size aligned.
+  @retval EFI_INVALID_PARAMETER Length is 0.
+  @retval EFI_INVALID_PARAMETER IoMmuAccess specified an illegal combination of access.
+  @retval EFI_UNSUPPORTED       The bit mask of IoMmuAccess is not supported by the IOMMU.
+  @retval EFI_UNSUPPORTED       The IOMMU does not support the memory range specified by BaseAddress and Length.
+  @retval EFI_OUT_OF_RESOURCES  There are not enough resources available to modify the IOMMU access.
+  @retval EFI_DEVICE_ERROR      The IOMMU device reported an error while attempting the operation.
+
+**/
+EFI_STATUS
+RequestAccessAttribute (
+  IN UINT16                 Segment,
+  IN VTD_SOURCE_ID          SourceId,
+  IN UINT64                 BaseAddress,
+  IN UINT64                 Length,
+  IN UINT64                 IoMmuAccess
+  )
+{
+  VTD_ACCESS_REQUEST        *NewAccessRequest;
+  UINTN                     Index;
+
+  //
+  // Optimization for memory.
+  //
+  // If the last record is to IoMmuAccess=0,
+  // Check previous records and remove the matched entry.
+  //
+  if (IoMmuAccess == 0) {
+    for (Index = 0; Index < mAccessRequestCount; Index++) {
+      if ((mAccessRequest[Index].Segment == Segment) &&
+          (mAccessRequest[Index].SourceId.Uint16 == SourceId.Uint16) &&
+          (mAccessRequest[Index].BaseAddress == BaseAddress) &&
+          (mAccessRequest[Index].Length == Length) &&
+          (mAccessRequest[Index].IoMmuAccess != 0)) {
+        //
+        // Remove this record [Index].
+        // No need to add the new record.
+        //
+        if (Index != mAccessRequestCount - 1) {
+          CopyMem (
+            &mAccessRequest[Index],
+            &mAccessRequest[Index + 1],
+            sizeof (VTD_ACCESS_REQUEST) * (mAccessRequestCount - 1 - Index)
+            );
+        }
+        ZeroMem (&mAccessRequest[mAccessRequestCount - 1], sizeof(VTD_ACCESS_REQUEST));
+        mAccessRequestCount--;
+        return EFI_SUCCESS;
+      }
+    }
+  }
+
+  if (mAccessRequestCount >= mAccessRequestMaxCount) {
+    NewAccessRequest = AllocateZeroPool (sizeof(*NewAccessRequest) * (mAccessRequestMaxCount + MAX_VTD_ACCESS_REQUEST));
+    if (NewAccessRequest == NULL) {
+      return EFI_OUT_OF_RESOURCES;
+    }
+    mAccessRequestMaxCount += MAX_VTD_ACCESS_REQUEST;
+    if (mAccessRequest != NULL) {
+      CopyMem (NewAccessRequest, mAccessRequest, sizeof(*NewAccessRequest) * mAccessRequestCount);
+      FreePool (mAccessRequest);
+    }
+    mAccessRequest = NewAccessRequest;
+  }
+
+  ASSERT (mAccessRequestCount < mAccessRequestMaxCount);
+
+  mAccessRequest[mAccessRequestCount].Segment = Segment;
+  mAccessRequest[mAccessRequestCount].SourceId = SourceId;
+  mAccessRequest[mAccessRequestCount].BaseAddress = BaseAddress;
+  mAccessRequest[mAccessRequestCount].Length = Length;
+  mAccessRequest[mAccessRequestCount].IoMmuAccess = IoMmuAccess;
+
+  mAccessRequestCount++;
+
+  return EFI_SUCCESS;
+}
+
+/**
+  Process Access Requests from before DMAR table is installed.
+
+**/
+VOID
+ProcessRequestedAccessAttribute (
+  VOID
+  )
+{
+  UINTN       Index;
+  EFI_STATUS  Status;
+
+  DEBUG ((DEBUG_INFO, "ProcessRequestedAccessAttribute ...\n"));
+
+  for (Index = 0; Index < mAccessRequestCount; Index++) {
+    DEBUG ((
+      DEBUG_INFO,
+      "PCI(S%x.B%x.D%x.F%x) ",
+      mAccessRequest[Index].Segment,
+      mAccessRequest[Index].SourceId.Bits.Bus,
+      mAccessRequest[Index].SourceId.Bits.Device,
+      mAccessRequest[Index].SourceId.Bits.Function
+      ));
+    DEBUG ((
+      DEBUG_INFO,
+      "(0x%lx~0x%lx) - %lx\n",
+      mAccessRequest[Index].BaseAddress,
+      mAccessRequest[Index].Length,
+      mAccessRequest[Index].IoMmuAccess
+      ));
+    Status = SetAccessAttribute (
+               mAccessRequest[Index].Segment,
+               mAccessRequest[Index].SourceId,
+               mAccessRequest[Index].BaseAddress,
+               mAccessRequest[Index].Length,
+               mAccessRequest[Index].IoMmuAccess
+               );
+    if (EFI_ERROR (Status)) {
+      DEBUG ((DEBUG_ERROR, "SetAccessAttribute %r: ", Status));
+    }
+  }
+
+  if (mAccessRequest != NULL) {
+    FreePool (mAccessRequest);
+  }
+  mAccessRequest = NULL;
+  mAccessRequestCount = 0;
+  mAccessRequestMaxCount = 0;
+
+  DEBUG ((DEBUG_INFO, "ProcessRequestedAccessAttribute Done\n"));
+}
 
 /**
   return the UEFI memory information.
@@ -370,6 +515,8 @@ SetupVtd (
 
   ParseDmarAcpiTableRmrr ();
 
+  ProcessRequestedAccessAttribute ();
+
   for (Index = 0; Index < mVtdUnitNumber; Index++) {
     DEBUG ((DEBUG_INFO,"VTD Unit %d (Segment: %04x)\n", Index, mVtdUnitInformation[Index].Segment));
     if (mVtdUnitInformation[Index].ExtRootEntryTable != NULL) {
@@ -473,27 +620,35 @@ InitializeDmaProtection (
   EFI_STATUS  Status;
   EFI_EVENT   ExitBootServicesEvent;
   EFI_EVENT   LegacyBootEvent;
-  EFI_EVENT   Event;
+  EFI_EVENT   EventAcpi10;
+  EFI_EVENT   EventAcpi20;
   
   Status = gBS->CreateEventEx (
                   EVT_NOTIFY_SIGNAL,
-                  TPL_CALLBACK,
+                  VTD_TPL_LEVEL,
                   AcpiNotificationFunc,
                   NULL,
                   &gEfiAcpi10TableGuid,
-                  &Event
+                  &EventAcpi10
                   );
   ASSERT_EFI_ERROR (Status);
 
   Status = gBS->CreateEventEx (
                   EVT_NOTIFY_SIGNAL,
-                  TPL_CALLBACK,
+                  VTD_TPL_LEVEL,
                   AcpiNotificationFunc,
                   NULL,
                   &gEfiAcpi20TableGuid,
-                  &Event
+                  &EventAcpi20
                   );
   ASSERT_EFI_ERROR (Status);
+
+  //
+  // Signal the events initially for the case
+  // that DMAR table has been installed.
+  //
+  gBS->SignalEvent (EventAcpi20);
+  gBS->SignalEvent (EventAcpi10);
 
   Status = gBS->CreateEventEx (
                   EVT_NOTIFY_SIGNAL,

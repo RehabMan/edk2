@@ -1,7 +1,7 @@
 /** @file
   Functions implementation related with DHCPv4 for UefiPxeBc Driver.
 
-  Copyright (c) 2009 - 2017, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2009 - 2018, Intel Corporation. All rights reserved.<BR>
 
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
@@ -1210,6 +1210,8 @@ PxeBcDhcp4CallBack (
     return EFI_SUCCESS;
   }
 
+  ASSERT (Packet != NULL);
+
   Private   = (PXEBC_PRIVATE_DATA *) Context;
   Mode      = Private->PxeBc.Mode;
   Callback  = Private->PxeBcCallback;
@@ -1305,6 +1307,8 @@ PxeBcDhcp4CallBack (
     break;
 
   case Dhcp4SelectOffer:
+    ASSERT (NewPacket != NULL);
+    
     //
     // Select offer by the default policy or by order, and record the SelectIndex
     // and SelectProxyType.
@@ -1697,13 +1701,8 @@ PxeBcDhcp4Dora (
   ZeroMem (Private->OfferCount, sizeof (Private->OfferCount));
   ZeroMem (Private->OfferIndex, sizeof (Private->OfferIndex));
 
-  //
-  // Start DHCPv4 D.O.R.A. process to acquire IPv4 address. This may 
-  // have already been done, thus do not leave in error if the return
-  // code is EFI_ALREADY_STARTED.
-  //
   Status = Dhcp4->Start (Dhcp4, NULL);
-  if (EFI_ERROR (Status) && Status != EFI_ALREADY_STARTED) {
+  if (EFI_ERROR (Status)) {
     if (Status == EFI_ICMP_ERROR) {
       PxeMode->IcmpErrorReceived = TRUE;
     }

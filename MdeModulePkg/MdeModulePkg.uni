@@ -1148,7 +1148,11 @@
 
 #string STR_gEfiMdeModulePkgTokenSpaceGuid_PcdHeapGuardPageType_PROMPT  #language en-US "The memory type mask for Page Guard"
 
-#string STR_gEfiMdeModulePkgTokenSpaceGuid_PcdHeapGuardPageType_HELP    #language en-US "Indicates which type allocation need guard page.\n"
+#string STR_gEfiMdeModulePkgTokenSpaceGuid_PcdHeapGuardPageType_HELP    #language en-US "Indicates which type allocation need guard page.\n\n"
+                                                                                        " If a bit is set, a head guard page and a tail guard page will be added just\n"
+                                                                                        " before and after corresponding type of pages allocated if there's enough\n"
+                                                                                        " free pages for all of them. The page allocation for the type related to\n"
+                                                                                        " cleared bits keeps the same as ususal.\n\n"
                                                                                         " Below is bit mask for this PCD: (Order is same as UEFI spec)<BR>\n"
                                                                                         "  EfiReservedMemoryType             0x0000000000000001\n"
                                                                                         "  EfiLoaderCode                     0x0000000000000002\n"
@@ -1171,7 +1175,11 @@
 
 #string STR_gEfiMdeModulePkgTokenSpaceGuid_PcdHeapGuardPoolType_PROMPT  #language en-US "The memory type mask for Pool Guard"
 
-#string STR_gEfiMdeModulePkgTokenSpaceGuid_PcdHeapGuardPoolType_HELP    #language en-US "Indicates which type allocation need guard page.\n"
+#string STR_gEfiMdeModulePkgTokenSpaceGuid_PcdHeapGuardPoolType_HELP    #language en-US "Indicates which type allocation need guard page.\n\n"
+                                                                                        " If a bit is set, a head guard page and a tail guard page will be added just\n"
+                                                                                        " before and after corresponding type of pages which the allocated pool occupies,\n"
+                                                                                        " if there's enough free memory for all of them. The pool allocation for the\n"
+                                                                                        " type related to cleared bits keeps the same as ususal.\n\n"
                                                                                         " Below is bit mask for this PCD: (Order is same as UEFI spec)<BR>\n"
                                                                                         "  EfiReservedMemoryType             0x0000000000000001\n"
                                                                                         "  EfiLoaderCode                     0x0000000000000002\n"
@@ -1196,13 +1204,17 @@
 #string STR_gEfiMdeModulePkgTokenSpaceGuid_PcdHeapGuardPropertyMask_PROMPT  #language en-US "The Heap Guard feature mask"
 
 #string STR_gEfiMdeModulePkgTokenSpaceGuid_PcdHeapGuardPropertyMask_HELP    #language en-US "This mask is to control Heap Guard behavior.\n"
+                                                                                            "Note that due to the limit of pool memory implementation and the alignment\n"
+                                                                                            "requirement of UEFI spec, BIT7 is a try-best setting which cannot guarantee\n"
+                                                                                            "that the returned pool is exactly adjacent to head guard page or tail guard\n"
+                                                                                            "page.\n"
                                                                                             "   BIT0 - Enable UEFI page guard.<BR>\n"
                                                                                             "   BIT1 - Enable UEFI pool guard.<BR>\n"
                                                                                             "   BIT2 - Enable SMM page guard.<BR>\n"
                                                                                             "   BIT3 - Enable SMM pool guard.<BR>\n"
                                                                                             "   BIT7 - The direction of Guard Page for Pool Guard.\n"
-                                                                                            "          0 - The returned pool is adjacent to the bottom guard page.<BR>\n"
-                                                                                            "          1 - The returned pool is adjacent to the top guard page.<BR>"
+                                                                                            "          0 - The returned pool is near the tail guard page.<BR>\n"
+                                                                                            "          1 - The returned pool is near the head guard page.<BR>"
 
 #string STR_gEfiMdeModulePkgTokenSpaceGuid_PcdCpuStackGuard_PROMPT  #language en-US "Enable UEFI Stack Guard"
 
@@ -1211,3 +1223,12 @@
                                                                                     "   TRUE  - UEFI Stack Guard will be enabled.<BR>\n"
                                                                                     "   FALSE - UEFI Stack Guard will be disabled.<BR>"
 
+#string STR_gEfiMdeModulePkgTokenSpaceGuid_PcdSetNvStoreDefaultId_PROMPT  #language en-US "NV Storage DefaultId"
+
+#string STR_gEfiMdeModulePkgTokenSpaceGuid_PcdSetNvStoreDefaultId_HELP    #language en-US "This dynamic PCD enables the default variable setting.\n"
+                                                                                    "  Its value is the default store ID value. The default value is zero as Standard default.\n"
+                                                                                    "  When its value is set in PEI, it will trig the default setting to be applied as the default EFI variable.\n"
+
+#string STR_gEfiMdeModulePkgTokenSpaceGuid_PcdNvStoreDefaultValueBuffer_PROMPT  #language en-US "NV Storage Default Value Buffer"
+
+#string STR_gEfiMdeModulePkgTokenSpaceGuid_PcdNvStoreDefaultValueBuffer_HELP    #language en-US "This dynamic PCD holds the DynamicHii PCD value. Its value is the auto generated.\n"
