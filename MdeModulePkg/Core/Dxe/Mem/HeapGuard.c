@@ -729,6 +729,20 @@ IsPageTypeToGuard (
 }
 
 /**
+  Check to see if the heap guard is enabled for page and/or pool allocation.
+
+  @return TRUE/FALSE.
+**/
+BOOLEAN
+IsHeapGuardEnabled (
+  VOID
+  )
+{
+  return IsMemoryTypeToGuard (EfiMaxMemoryType, AllocateAnyPages,
+                              GUARD_HEAP_TYPE_POOL|GUARD_HEAP_TYPE_PAGE);
+}
+
+/**
   Set head Guard and tail Guard for the given memory range.
 
   @param[in]  Memory          Base address of memory to set guard for.
@@ -1135,10 +1149,6 @@ CoreConvertPagesWithGuard (
     OldPages = NumberOfPages;
 
     AdjustMemoryF (&Start, &NumberOfPages);
-    if (NumberOfPages == 0) {
-      return EFI_SUCCESS;
-    }
-
     //
     // It's safe to unset Guard page inside memory lock because there should
     // be no memory allocation occurred in updating memory page attribute at
@@ -1147,6 +1157,9 @@ CoreConvertPagesWithGuard (
     // marking it usable (from non-present to present).
     //
     UnsetGuardForMemory (OldStart, OldPages);
+    if (NumberOfPages == 0) {
+      return EFI_SUCCESS;
+    }
   } else {
     AdjustMemoryA (&Start, &NumberOfPages);
   }

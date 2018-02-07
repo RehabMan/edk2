@@ -112,6 +112,8 @@ typedef struct {
   @retval EFI_UNSUPPORTED        The IOMMU does not support the memory range specified by Mapping.
   @retval EFI_OUT_OF_RESOURCES   There are not enough resources available to modify the IOMMU access.
   @retval EFI_DEVICE_ERROR       The IOMMU device reported an error while attempting the operation.
+  @retval EFI_NOT_AVAILABLE_YET  DMA protection has been enabled, but DMA buffer are
+                                 not available to be allocated yet.
 
 **/
 EFI_STATUS
@@ -122,6 +124,16 @@ PeiIoMmuSetAttribute (
   IN UINT64                IoMmuAccess
   )
 {
+  VOID                        *Hob;
+  DMA_BUFFER_INFO             *DmaBufferInfo;
+
+  Hob = GetFirstGuidHob (&mDmaBufferInfoGuid);
+  DmaBufferInfo = GET_GUID_HOB_DATA(Hob);
+
+  if (DmaBufferInfo->DmaBufferCurrentTop == 0) {
+    return EFI_NOT_AVAILABLE_YET;
+  }
+
   return EFI_SUCCESS;
 }
 
@@ -143,6 +155,8 @@ PeiIoMmuSetAttribute (
   @retval EFI_INVALID_PARAMETER One or more parameters are invalid.
   @retval EFI_OUT_OF_RESOURCES  The request could not be completed due to a lack of resources.
   @retval EFI_DEVICE_ERROR      The system hardware could not map the requested address.
+  @retval EFI_NOT_AVAILABLE_YET DMA protection has been enabled, but DMA buffer are
+                                not available to be allocated yet.
 
 **/
 EFI_STATUS
@@ -164,16 +178,20 @@ PeiIoMmuMap (
   Hob = GetFirstGuidHob (&mDmaBufferInfoGuid);
   DmaBufferInfo = GET_GUID_HOB_DATA(Hob);
 
+  DEBUG ((DEBUG_VERBOSE, "PeiIoMmuMap - HostAddress - 0x%x, NumberOfBytes - %x\n", HostAddress, *NumberOfBytes));
+  DEBUG ((DEBUG_VERBOSE, "  DmaBufferCurrentTop - %x\n", DmaBufferInfo->DmaBufferCurrentTop));
+  DEBUG ((DEBUG_VERBOSE, "  DmaBufferCurrentBottom - %x\n", DmaBufferInfo->DmaBufferCurrentBottom));
+
+  if (DmaBufferInfo->DmaBufferCurrentTop == 0) {
+    return EFI_NOT_AVAILABLE_YET;
+  }
+
   if (Operation == EdkiiIoMmuOperationBusMasterCommonBuffer ||
       Operation == EdkiiIoMmuOperationBusMasterCommonBuffer64) {
     *DeviceAddress = (UINTN)HostAddress;
     *Mapping = 0;
     return EFI_SUCCESS;
   }
-
-  DEBUG ((DEBUG_VERBOSE, "PeiIoMmuMap - HostAddress - 0x%x, NumberOfBytes - %x\n", HostAddress, *NumberOfBytes));
-  DEBUG ((DEBUG_VERBOSE, "  DmaBufferCurrentTop - %x\n", DmaBufferInfo->DmaBufferCurrentTop));
-  DEBUG ((DEBUG_VERBOSE, "  DmaBufferCurrentBottom - %x\n", DmaBufferInfo->DmaBufferCurrentBottom));
 
   Length = *NumberOfBytes + sizeof(MAP_INFO);
   if (Length > DmaBufferInfo->DmaBufferCurrentTop - DmaBufferInfo->DmaBufferCurrentBottom) {
@@ -220,6 +238,9 @@ PeiIoMmuMap (
   @retval EFI_SUCCESS           The range was unmapped.
   @retval EFI_INVALID_PARAMETER Mapping is not a value that was returned by Map().
   @retval EFI_DEVICE_ERROR      The data was not committed to the target system memory.
+  @retval EFI_NOT_AVAILABLE_YET DMA protection has been enabled, but DMA buffer are
+                                not available to be allocated yet.
+
 **/
 EFI_STATUS
 EFIAPI
@@ -236,13 +257,17 @@ PeiIoMmuUnmap (
   Hob = GetFirstGuidHob (&mDmaBufferInfoGuid);
   DmaBufferInfo = GET_GUID_HOB_DATA(Hob);
 
-  if (Mapping == NULL) {
-    return EFI_SUCCESS;
-  }
-
   DEBUG ((DEBUG_VERBOSE, "PeiIoMmuUnmap - Mapping - %x\n", Mapping));
   DEBUG ((DEBUG_VERBOSE, "  DmaBufferCurrentTop - %x\n", DmaBufferInfo->DmaBufferCurrentTop));
   DEBUG ((DEBUG_VERBOSE, "  DmaBufferCurrentBottom - %x\n", DmaBufferInfo->DmaBufferCurrentBottom));
+
+  if (DmaBufferInfo->DmaBufferCurrentTop == 0) {
+    return EFI_NOT_AVAILABLE_YET;
+  }
+
+  if (Mapping == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
 
   MapInfo = Mapping;
   ASSERT (MapInfo->Signature == MAP_INFO_SIGNATURE);
@@ -287,6 +312,8 @@ PeiIoMmuUnmap (
                                 MEMORY_WRITE_COMBINE, MEMORY_CACHED and DUAL_ADDRESS_CYCLE.
   @retval EFI_INVALID_PARAMETER One or more parameters are invalid.
   @retval EFI_OUT_OF_RESOURCES  The memory pages could not be allocated.
+  @retval EFI_NOT_AVAILABLE_YET DMA protection has been enabled, but DMA buffer are
+                                not available to be allocated yet.
 
 **/
 EFI_STATUS
@@ -309,6 +336,10 @@ PeiIoMmuAllocateBuffer (
   DEBUG ((DEBUG_VERBOSE, "PeiIoMmuAllocateBuffer - page - %x\n", Pages));
   DEBUG ((DEBUG_VERBOSE, "  DmaBufferCurrentTop - %x\n", DmaBufferInfo->DmaBufferCurrentTop));
   DEBUG ((DEBUG_VERBOSE, "  DmaBufferCurrentBottom - %x\n", DmaBufferInfo->DmaBufferCurrentBottom));
+
+  if (DmaBufferInfo->DmaBufferCurrentTop == 0) {
+    return EFI_NOT_AVAILABLE_YET;
+  }
 
   Length = EFI_PAGES_TO_SIZE(Pages);
   if (Length > DmaBufferInfo->DmaBufferCurrentTop - DmaBufferInfo->DmaBufferCurrentBottom) {
@@ -333,6 +364,8 @@ PeiIoMmuAllocateBuffer (
   @retval EFI_SUCCESS           The requested memory pages were freed.
   @retval EFI_INVALID_PARAMETER The memory range specified by HostAddress and Pages
                                 was not allocated with AllocateBuffer().
+  @retval EFI_NOT_AVAILABLE_YET DMA protection has been enabled, but DMA buffer are
+                                not available to be allocated yet.
 
 **/
 EFI_STATUS
@@ -353,6 +386,10 @@ PeiIoMmuFreeBuffer (
   DEBUG ((DEBUG_VERBOSE, "PeiIoMmuFreeBuffer - page - %x, HostAddr - %x\n", Pages, HostAddress));
   DEBUG ((DEBUG_VERBOSE, "  DmaBufferCurrentTop - %x\n", DmaBufferInfo->DmaBufferCurrentTop));
   DEBUG ((DEBUG_VERBOSE, "  DmaBufferCurrentBottom - %x\n", DmaBufferInfo->DmaBufferCurrentBottom));
+
+  if (DmaBufferInfo->DmaBufferCurrentTop == 0) {
+    return EFI_NOT_AVAILABLE_YET;
+  }
 
   Length = EFI_PAGES_TO_SIZE(Pages);
   if ((UINTN)HostAddress == DmaBufferInfo->DmaBufferCurrentTop) {
@@ -381,17 +418,13 @@ CONST EFI_PEI_PPI_DESCRIPTOR mIoMmuPpiList = {
   Initialize DMA protection.
 
   @param VTdInfo        The VTd engine context information.
-  @param DmaBufferSize  the DMA buffer size
-  @param DmaBufferBase  the DMA buffer base
 
   @retval EFI_SUCCESS           the DMA protection is initialized.
   @retval EFI_OUT_OF_RESOURCES  no enough resource to initialize DMA protection.
 **/
 EFI_STATUS
 InitDmaProtection (
-  IN   VTD_INFO                    *VTdInfo,
-  IN   UINTN                       DmaBufferSize,
-  OUT  UINTN                       *DmaBufferBase
+  IN   VTD_INFO                    *VTdInfo
   )
 {
   EFI_STATUS                  Status;
@@ -402,6 +435,15 @@ InitDmaProtection (
   UINTN                       LowTop;
   UINTN                       HighBottom;
   UINT64                      HighTop;
+  DMA_BUFFER_INFO             *DmaBufferInfo;
+  VOID                        *Hob;
+  EFI_PEI_PPI_DESCRIPTOR      *OldDescriptor;
+  EDKII_IOMMU_PPI             *OldIoMmuPpi;
+
+  Hob = GetFirstGuidHob (&mDmaBufferInfoGuid);
+  DmaBufferInfo = GET_GUID_HOB_DATA(Hob);
+
+  DEBUG ((DEBUG_INFO, " DmaBufferSize : 0x%x\n", DmaBufferInfo->DmaBufferSize));
 
   LowMemoryAlignment = GetLowMemoryAlignment (VTdInfo, VTdInfo->EngineMask);
   HighMemoryAlignment = GetHighMemoryAlignment (VTdInfo, VTdInfo->EngineMask);
@@ -410,17 +452,38 @@ InitDmaProtection (
   } else {
     MemoryAlignment = LowMemoryAlignment;
   }
-  ASSERT (DmaBufferSize == ALIGN_VALUE(DmaBufferSize, MemoryAlignment));
-  *DmaBufferBase = (UINTN)AllocateAlignedPages (EFI_SIZE_TO_PAGES(DmaBufferSize), MemoryAlignment);
-  ASSERT (*DmaBufferBase != 0);
-  if (*DmaBufferBase == 0) {
+  ASSERT (DmaBufferInfo->DmaBufferSize == ALIGN_VALUE(DmaBufferInfo->DmaBufferSize, MemoryAlignment));
+  DmaBufferInfo->DmaBufferBase = (UINTN)AllocateAlignedPages (EFI_SIZE_TO_PAGES(DmaBufferInfo->DmaBufferSize), MemoryAlignment);
+  ASSERT (DmaBufferInfo->DmaBufferBase != 0);
+  if (DmaBufferInfo->DmaBufferBase == 0) {
     DEBUG ((DEBUG_INFO, " InitDmaProtection : OutOfResource\n"));
     return EFI_OUT_OF_RESOURCES;
   }
 
+  DEBUG ((DEBUG_INFO, " DmaBufferBase : 0x%x\n", DmaBufferInfo->DmaBufferBase));
+
+  DmaBufferInfo->DmaBufferCurrentTop = DmaBufferInfo->DmaBufferBase + DmaBufferInfo->DmaBufferSize;
+  DmaBufferInfo->DmaBufferCurrentBottom = DmaBufferInfo->DmaBufferBase;
+
+  //
+  // (Re)Install PPI.
+  //
+  Status = PeiServicesLocatePpi (
+             &gEdkiiIoMmuPpiGuid,
+             0,
+             &OldDescriptor,
+             (VOID **) &OldIoMmuPpi
+             );
+  if (!EFI_ERROR (Status)) {
+    Status = PeiServicesReInstallPpi (OldDescriptor, &mIoMmuPpiList);
+  } else {
+    Status = PeiServicesInstallPpi (&mIoMmuPpiList);
+  }
+  ASSERT_EFI_ERROR (Status);
+
   LowBottom = 0;
-  LowTop = *DmaBufferBase;
-  HighBottom = *DmaBufferBase + DmaBufferSize;
+  LowTop = DmaBufferInfo->DmaBufferBase;
+  HighBottom = DmaBufferInfo->DmaBufferBase + DmaBufferInfo->DmaBufferSize;
   HighTop = LShiftU64 (1, VTdInfo->HostAddressWidth + 1);
 
   Status = SetDmaProtectedRange (
@@ -433,7 +496,7 @@ InitDmaProtection (
              );
 
   if (EFI_ERROR(Status)) {
-    FreePages ((VOID *)*DmaBufferBase, EFI_SIZE_TO_PAGES(DmaBufferSize));
+    FreePages ((VOID *)DmaBufferInfo->DmaBufferBase, EFI_SIZE_TO_PAGES(DmaBufferInfo->DmaBufferSize));
   }
 
   return Status;
@@ -543,7 +606,6 @@ InitVTdPmrForDma (
   EFI_STATUS                  Status;
   VOID                        *Hob;
   VTD_INFO                    *VTdInfo;
-  DMA_BUFFER_INFO             *DmaBufferInfo;
 
   Hob = GetFirstGuidHob (&mVTdInfoGuid);
   VTdInfo = GET_GUID_HOB_DATA(Hob);
@@ -553,29 +615,11 @@ InitVTdPmrForDma (
   //
   ParseDmarAcpiTableRmrr (VTdInfo);
 
-  Hob = GetFirstGuidHob (&mDmaBufferInfoGuid);
-  DmaBufferInfo = GET_GUID_HOB_DATA(Hob);
-
-  DEBUG ((DEBUG_INFO, " DmaBufferSize : 0x%x\n", DmaBufferInfo->DmaBufferSize));
   //
-  // Find a pre-memory in resource hob as DMA buffer
-  // Mark PEI memory to be DMA protected.
+  // Allocate a range in PEI memory as DMA buffer
+  // Mark others to be DMA protected.
   //
-  Status = InitDmaProtection (VTdInfo, DmaBufferInfo->DmaBufferSize, &DmaBufferInfo->DmaBufferBase);
-  if (EFI_ERROR(Status)) {
-    return Status;
-  }
-
-  DEBUG ((DEBUG_INFO, " DmaBufferBase : 0x%x\n", DmaBufferInfo->DmaBufferBase));
-
-  DmaBufferInfo->DmaBufferCurrentTop = DmaBufferInfo->DmaBufferBase + DmaBufferInfo->DmaBufferSize;
-  DmaBufferInfo->DmaBufferCurrentBottom = DmaBufferInfo->DmaBufferBase;
-
-  //
-  // Install PPI.
-  //
-  Status = PeiServicesInstallPpi (&mIoMmuPpiList);
-  ASSERT_EFI_ERROR(Status);
+  Status = InitDmaProtection (VTdInfo);
 
   return Status;
 }
@@ -673,6 +717,12 @@ VTdInfoNotify (
     //
     InitVTdInfo ();
     InitVTdPmrForAll ();
+
+    //
+    // Install PPI.
+    //
+    Status = PeiServicesInstallPpi (&mIoMmuPpiList);
+    ASSERT_EFI_ERROR(Status);
   } else {
     //
     // If the memory is initialized,

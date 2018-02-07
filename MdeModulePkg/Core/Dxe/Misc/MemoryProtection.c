@@ -48,6 +48,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Protocol/SimpleFileSystem.h>
 
 #include "DxeMain.h"
+#include "Mem/HeapGuard.h"
 
 #define CACHE_ATTRIBUTE_MASK   (EFI_MEMORY_UC | EFI_MEMORY_WC | EFI_MEMORY_WT | EFI_MEMORY_WB | EFI_MEMORY_UCE | EFI_MEMORY_WP)
 #define MEMORY_ATTRIBUTE_MASK  (EFI_MEMORY_RP | EFI_MEMORY_XP | EFI_MEMORY_RO)
@@ -845,10 +846,24 @@ InitializeDxeNxMemoryProtectionPolicy (
 
     Attributes = GetPermissionAttributeForMemoryType (MemoryMapEntry->Type);
     if (Attributes != 0) {
-      SetUefiImageMemoryAttributes (
-        MemoryMapEntry->PhysicalStart,
-        LShiftU64 (MemoryMapEntry->NumberOfPages, EFI_PAGE_SHIFT),
-        Attributes);
+      if (MemoryMapEntry->PhysicalStart == 0 &&
+          PcdGet8 (PcdNullPointerDetectionPropertyMask) != 0) {
+
+        ASSERT (MemoryMapEntry->NumberOfPages > 0);
+        //
+        // Skip page 0 if NULL pointer detection is enabled to avoid attributes
+        // overwritten.
+        //
+        SetUefiImageMemoryAttributes (
+          MemoryMapEntry->PhysicalStart + EFI_PAGE_SIZE,
+          LShiftU64 (MemoryMapEntry->NumberOfPages - 1, EFI_PAGE_SHIFT),
+          Attributes);
+      } else {
+        SetUefiImageMemoryAttributes (
+          MemoryMapEntry->PhysicalStart,
+          LShiftU64 (MemoryMapEntry->NumberOfPages, EFI_PAGE_SHIFT),
+          Attributes);
+      }
     }
     MemoryMapEntry = NEXT_MEMORY_DESCRIPTOR (MemoryMapEntry, DescriptorSize);
   }
@@ -1186,6 +1201,27 @@ ApplyMemoryProtectionPolicy (
   //
   if (PcdGet64 (PcdDxeNxMemoryProtectionPolicy) == 0) {
     return EFI_SUCCESS;
+  }
+
+  //
+  // Don't overwrite Guard pages, which should be the first and/or last page,
+  // if any.
+  //
+  if (IsHeapGuardEnabled ()) {
+    if (IsGuardPage (Memory))  {
+      Memory += EFI_PAGE_SIZE;
+      Length -= EFI_PAGE_SIZE;
+      if (Length == 0) {
+        return EFI_SUCCESS;
+      }
+    }
+
+    if (IsGuardPage (Memory + Length - EFI_PAGE_SIZE))  {
+      Length -= EFI_PAGE_SIZE;
+      if (Length == 0) {
+        return EFI_SUCCESS;
+      }
+    }
   }
 
   //

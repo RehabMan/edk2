@@ -1535,16 +1535,10 @@ def ParseFieldValue (Value):
     if Value.startswith('GUID') and Value.endswith(')'):
         Value = Value.split('(', 1)[1][:-1].strip()
         if Value[0] == '{' and Value[-1] == '}':
-            Value = Value[1:-1].strip()
-            Value = Value.split('{', 1)
-            Value = ['%02x' % int(Item, 16) for Item in (Value[0] + Value[1][:-1]).split(',')]
-            if len(Value[0]) != 8:
-                Value[0] = '%08X' % int(Value[0], 16)
-            if len(Value[1]) != 4:
-                Value[1] = '%04X' % int(Value[1], 16)
-            if len(Value[2]) != 4:
-                Value[2] = '%04X' % int(Value[2], 16)
-            Value = '-'.join(Value[0:3]) + '-' + ''.join(Value[3:5]) + '-' + ''.join(Value[5:11])
+            TmpValue = GuidStructureStringToGuidString(Value)
+            if len(TmpValue) == 0:
+                raise BadExpression("Invalid GUID value string %s" % Value)
+            Value = TmpValue
         if Value[0] == '"' and Value[-1] == '"':
             Value = Value[1:-1]
         try:
@@ -1572,6 +1566,8 @@ def ParseFieldValue (Value):
     if Value.startswith("L'") and Value.endswith("'"):
         # Unicode Character Constant
         List = list(Value[2:-1])
+        if len(List) == 0:
+            raise BadExpression('Length %s is %s' % (Value, len(List)))
         List.reverse()
         Value = 0
         for Char in List:
@@ -1580,6 +1576,8 @@ def ParseFieldValue (Value):
     if Value.startswith("'") and Value.endswith("'"):
         # Character constant
         List = list(Value[1:-1])
+        if len(List) == 0:
+            raise BadExpression('Length %s is %s' % (Value, len(List)))
         List.reverse()
         Value = 0
         for Char in List:
@@ -1599,7 +1597,8 @@ def ParseFieldValue (Value):
                 Value = (Value << 8) | ((ItemValue >> 8 * I) & 0xff)
         return Value, RetSize
     if Value.startswith('DEVICE_PATH(') and Value.endswith(')'):
-        Value = Value.split('"')[1]
+        Value = Value.replace("DEVICE_PATH(", '').rstrip(')')
+        Value = Value.strip().strip('"')
         return ParseDevPathValue(Value)
     if Value.lower().startswith('0x'):
         Value = int(Value, 16)
@@ -2349,10 +2348,10 @@ def PackRegistryFormatGuid(Guid):
 
 def BuildOptionPcdValueFormat(TokenSpaceGuidCName, TokenCName, PcdDatumType, Value):
     if PcdDatumType not in [TAB_UINT8, TAB_UINT16, TAB_UINT32, TAB_UINT64,'BOOLEAN']:
-        if Value.startswith('L'):
+        if Value.startswith('L') or Value.startswith('"'):
             if not Value[1]:
                 EdkLogger.error("build", FORMAT_INVALID, 'For Void* type PCD, when specify the Value in the command line, please use the following format: "string", L"string", H"{...}"')
-            Value = Value[0] + '"' + Value[1:] + '"'
+            Value = Value
         elif Value.startswith('H'):
             if not Value[1]:
                 EdkLogger.error("build", FORMAT_INVALID, 'For Void* type PCD, when specify the Value in the command line, please use the following format: "string", L"string", H"{...}"')
