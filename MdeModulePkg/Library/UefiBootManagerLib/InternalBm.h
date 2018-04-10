@@ -51,7 +51,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Guid/MemoryTypeInformation.h>
 #include <Guid/FileInfo.h>
 #include <Guid/GlobalVariable.h>
-#include <Guid/Performance.h>
 #include <Guid/StatusCodeDataTypeVariable.h>
 
 #include <Library/PrintLib.h>
@@ -69,7 +68,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/PcdLib.h>
 #include <Library/PeCoffGetEntryPointLib.h>
 #include <Library/UefiBootManagerLib.h>
-#include <Library/TimerLib.h>
 #include <Library/DxeServicesLib.h>
 #include <Library/ReportStatusCodeLib.h>
 #include <Library/CapsuleLib.h>
@@ -110,6 +108,12 @@ CHAR16 *
 #define BM_OPTION_NAME_LEN                          sizeof ("PlatformRecovery####")
 extern CHAR16  *mBmLoadOptionName[];
 
+//
+// Maximum number of reconnect retry to repair controller; it is to limit the
+// number of recursive call of BmRepairAllControllers.
+//
+#define MAX_RECONNECT_REPAIR                        10
+
 /**
   Visitor function to be called by BmForEachVariable for each variable
   in variable storage.
@@ -147,10 +151,13 @@ typedef struct {
 
 /**
   Repair all the controllers according to the Driver Health status queried.
+
+  @param ReconnectRepairCount     To record the number of recursive call of
+                                  this function itself.
 **/
 VOID
 BmRepairAllControllers (
-  VOID
+  UINTN       ReconnectRepairCount
   );
 
 #define BM_HOTKEY_SIGNATURE SIGNATURE_32 ('b', 'm', 'h', 'k')
@@ -182,22 +189,6 @@ EFI_STATUS
 BmGetFreeOptionNumber (
   IN  EFI_BOOT_MANAGER_LOAD_OPTION_TYPE LoadOptionType,
   OUT UINT16                            *FreeOptionNumber
-  );
-
-/**
-
-  Writes performance data of booting into the allocated memory.
-  OS can process these records.
-
-  @param  Event                 The triggered event.
-  @param  Context               Context for this event.
-
-**/
-VOID
-EFIAPI
-BmWriteBootToOsPerformanceData (
-  IN EFI_EVENT  Event,
-  IN VOID       *Context
   );
 
 /**
@@ -343,14 +334,6 @@ EFI_DEVICE_PATH_PROTOCOL *
 BmDelPartMatchInstance (
   IN     EFI_DEVICE_PATH_PROTOCOL  *Multi,
   IN     EFI_DEVICE_PATH_PROTOCOL  *Single
-  );
-
-/**
-  Repair all the controllers according to the Driver Health status queried.
-**/
-VOID
-BmRepairAllControllers (
-  VOID
   );
 
 /**

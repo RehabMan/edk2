@@ -80,6 +80,7 @@ DEFINE VS2017_BIN_HOST    = DEF(VS2017_BIN)\HostDEF(VS2017_HOST)\DEF(VS2017_HOST
 DEFINE VS2017_BIN_IA32    = DEF(VS2017_BIN)\HostDEF(VS2017_HOST)\x86
 DEFINE VS2017_BIN_X64     = DEF(VS2017_BIN)\HostDEF(VS2017_HOST)\x64
 DEFINE VS2017_BIN_ARM     = DEF(VS2017_BIN)\HostDEF(VS2017_HOST)\arm
+DEFINE VS2017_BIN_AARCH64 = DEF(VS2017_BIN)\HostDEF(VS2017_HOST)\arm64
 
 DEFINE WINSDK_BIN       = ENV(WINSDK_PREFIX)
 DEFINE WINSDKx86_BIN    = ENV(WINSDKx86_PREFIX)
@@ -237,6 +238,7 @@ DEFINE IPHONE_TOOLS            = /Developer/Platforms/iPhoneOS.platform/Develope
 
 DEFINE SOURCERY_CYGWIN_TOOLS = /cygdrive/c/Program Files/CodeSourcery/Sourcery G++ Lite/bin
 
+DEFINE DTCPP_BIN               = ENV(DTCPP_PREFIX)cpp
 DEFINE DTC_BIN                 = ENV(DTC_PREFIX)dtc
 
 ####################################################################################
@@ -329,7 +331,7 @@ DEFINE DTC_BIN                 = ENV(DTC_PREFIX)dtc
 #                               Intel(r) ACPI Compiler (iasl.exe) from
 #                               https://acpica.org/downloads
 #   VS2017      -win32-  Requires:
-#                             Microsoft Visual Studio 2017 version 15.2 or later
+#                             Microsoft Visual Studio 2017 version 15.2 (15.4 for ARM64) or later
 #                        Optional:
 #                             Required to build EBC drivers:
 #                               Intel(r) Compiler for Efi Byte Code (Intel(r) EBC Compiler)
@@ -337,7 +339,7 @@ DEFINE DTC_BIN                 = ENV(DTC_PREFIX)dtc
 #                               Intel(r) ACPI Compiler (iasl.exe) from
 #                               https://acpica.org/downloads
 #                        Note:
-#                             Building of XIP firmware images for ARM is not currently supported (only applications).
+#                             Building of XIP firmware images for ARM/ARM64 is not currently supported (only applications).
 #                             /FILEALIGN:4096 and other changes are needed for ARM firmware builds.
 #   DDK3790     -win32-  Requires:
 #                             Microsoft Windows Server 2003 Driver Development Kit (Microsoft WINDDK) version 3790.1830
@@ -4200,6 +4202,33 @@ NOOPT_VS2017_ARM_ASM_FLAGS        = /nologo
 RELEASE_VS2017_ARM_DLINK_FLAGS    = /NOLOGO /NODEFAULTLIB /IGNORE:4001 /IGNORE:4254 /OPT:REF /OPT:ICF=10 /MAP /SECTION:.xdata,D /SECTION:.pdata,D /MACHINE:ARM /LTCG /DLL /ENTRY:$(IMAGE_ENTRY_POINT) /SUBSYSTEM:EFI_BOOT_SERVICE_DRIVER /SAFESEH:NO /BASE:0 /DRIVER /MERGE:.rdata=.data
 NOOPT_VS2017_ARM_DLINK_FLAGS      = /NOLOGO /NODEFAULTLIB /IGNORE:4001 /OPT:REF /OPT:ICF=10 /MAP /SECTION:.xdata,D /SECTION:.pdata,D /MACHINE:ARM /LTCG /DLL /ENTRY:$(IMAGE_ENTRY_POINT) /SUBSYSTEM:EFI_BOOT_SERVICE_DRIVER /SAFESEH:NO /BASE:0 /DRIVER /DEBUG
 
+#####################
+# AARCH64 definitions
+#####################
+*_VS2017_AARCH64_CC_PATH           = DEF(VS2017_BIN_AARCH64)\cl.exe
+*_VS2017_AARCH64_VFRPP_PATH        = DEF(VS2017_BIN_AARCH64)\cl.exe
+*_VS2017_AARCH64_SLINK_PATH        = DEF(VS2017_BIN_AARCH64)\lib.exe
+*_VS2017_AARCH64_DLINK_PATH        = DEF(VS2017_BIN_AARCH64)\link.exe
+*_VS2017_AARCH64_APP_PATH          = DEF(VS2017_BIN_AARCH64)\cl.exe
+*_VS2017_AARCH64_PP_PATH           = DEF(VS2017_BIN_AARCH64)\cl.exe
+*_VS2017_AARCH64_ASM_PATH          = DEF(VS2017_BIN_AARCH64)\armasm64.exe
+*_VS2017_AARCH64_ASLCC_PATH        = DEF(VS2017_BIN_AARCH64)\cl.exe
+*_VS2017_AARCH64_ASLPP_PATH        = DEF(VS2017_BIN_AARCH64)\cl.exe
+*_VS2017_AARCH64_ASLDLINK_PATH     = DEF(VS2017_BIN_AARCH64)\link.exe
+
+      *_VS2017_AARCH64_MAKE_FLAGS  = /nologo
+  DEBUG_VS2017_AARCH64_CC_FLAGS    = /nologo /c /WX /GS- /W4 /Gs32768 /D UNICODE /O1b2 /GL /FIAutoGen.h /EHs-c- /GR- /GF /Gy /Zi /Gm /Gw /Oi-
+RELEASE_VS2017_AARCH64_CC_FLAGS    = /nologo /c /WX /GS- /W4 /Gs32768 /D UNICODE /O1b2 /GL /FIAutoGen.h /EHs-c- /GR- /GF /Gw /Oi-
+NOOPT_VS2017_AARCH64_CC_FLAGS      = /nologo /c /WX /GS- /W4 /Gs32768 /D UNICODE /FIAutoGen.h /EHs-c- /GR- /GF /Gy /Zi /Gm /Od /Oi-
+
+  DEBUG_VS2017_AARCH64_ASM_FLAGS   = /nologo /g
+RELEASE_VS2017_AARCH64_ASM_FLAGS   = /nologo
+NOOPT_VS2017_AARCH64_ASM_FLAGS     = /nologo
+
+  DEBUG_VS2017_AARCH64_DLINK_FLAGS = /NOLOGO /NODEFAULTLIB /IGNORE:4001 /OPT:REF /OPT:ICF=10 /MAP /SECTION:.xdata,D /SECTION:.pdata,D /MACHINE:ARM64 /LTCG /DLL /ENTRY:$(IMAGE_ENTRY_POINT) /SUBSYSTEM:EFI_BOOT_SERVICE_DRIVER /SAFESEH:NO /DRIVER /DEBUG
+RELEASE_VS2017_AARCH64_DLINK_FLAGS = /NOLOGO /NODEFAULTLIB /IGNORE:4001 /IGNORE:4254 /OPT:REF /OPT:ICF=10 /MAP /SECTION:.xdata,D /SECTION:.pdata,D /MACHINE:ARM64 /LTCG /DLL /ENTRY:$(IMAGE_ENTRY_POINT) /SUBSYSTEM:EFI_BOOT_SERVICE_DRIVER /SAFESEH:NO /DRIVER /MERGE:.rdata=.data
+NOOPT_VS2017_AARCH64_DLINK_FLAGS   = /NOLOGO /NODEFAULTLIB /IGNORE:4001 /OPT:REF /OPT:ICF=10 /MAP /SECTION:.xdata,D /SECTION:.pdata,D /MACHINE:ARM64 /LTCG /DLL /ENTRY:$(IMAGE_ENTRY_POINT) /SUBSYSTEM:EFI_BOOT_SERVICE_DRIVER /SAFESEH:NO /DRIVER /DEBUG
+
 ##################
 # EBC definitions
 ##################
@@ -4499,6 +4528,8 @@ DEBUG_*_*_OBJCOPY_ADDDEBUGFLAG     = --add-gnu-debuglink=$(DEBUG_DIR)/$(MODULE_N
 RELEASE_*_*_OBJCOPY_ADDDEBUGFLAG   =
 NOOPT_*_*_OBJCOPY_ADDDEBUGFLAG     = --add-gnu-debuglink=$(DEBUG_DIR)/$(MODULE_NAME).debug
 *_*_*_DTC_FLAGS                    = -H epapr
+*_*_*_DTCPP_PATH                   = DEF(DTCPP_BIN)
+*_*_*_DTC_PATH                     = DEF(DTC_BIN)
 
 DEFINE GCC_ALL_CC_FLAGS            = -g -Os -fshort-wchar -fno-builtin -fno-strict-aliasing -Wall -Werror -Wno-array-bounds -include AutoGen.h -fno-common
 DEFINE GCC_IA32_CC_FLAGS           = DEF(GCC_ALL_CC_FLAGS) -m32 -malign-double -freorder-blocks -freorder-blocks-and-partition -O2 -mno-stack-arg-probe
@@ -4912,7 +4943,6 @@ RELEASE_GCC45_X64_CC_FLAGS       = DEF(GCC45_X64_CC_FLAGS) -Os
 *_GCC46_*_MAKE_PATH                    = DEF(GCC46_IA32_PREFIX)make
 *_GCC46_*_*_DLL                        = ENV(GCC46_DLL)
 *_GCC46_*_ASL_PATH                     = DEF(UNIX_IASL_BIN)
-*_GCC46_*_DTC_PATH                     = DEF(DTC_BIN)
 
 *_GCC46_*_PP_FLAGS                     = DEF(GCC_PP_FLAGS)
 *_GCC46_*_ASLPP_FLAGS                  = DEF(GCC_ASLPP_FLAGS)
@@ -5023,7 +5053,6 @@ RELEASE_GCC46_ARM_CC_FLAGS       = DEF(GCC46_ARM_CC_FLAGS) -Wno-unused-but-set-v
 *_GCC47_*_MAKE_PATH                    = DEF(GCC47_IA32_PREFIX)make
 *_GCC47_*_*_DLL                        = ENV(GCC47_DLL)
 *_GCC47_*_ASL_PATH                     = DEF(UNIX_IASL_BIN)
-*_GCC47_*_DTC_PATH                     = DEF(DTC_BIN)
 
 *_GCC47_*_PP_FLAGS                     = DEF(GCC_PP_FLAGS)
 *_GCC47_*_ASLPP_FLAGS                  = DEF(GCC_ASLPP_FLAGS)
@@ -5163,7 +5192,6 @@ RELEASE_GCC47_AARCH64_CC_FLAGS   = DEF(GCC47_AARCH64_CC_FLAGS) -Wno-unused-but-s
 *_GCC48_*_MAKE_PATH                    = DEF(GCC48_IA32_PREFIX)make
 *_GCC48_*_*_DLL                        = ENV(GCC48_DLL)
 *_GCC48_*_ASL_PATH                     = DEF(UNIX_IASL_BIN)
-*_GCC48_*_DTC_PATH                     = DEF(DTC_BIN)
 
 *_GCC48_*_PP_FLAGS                     = DEF(GCC_PP_FLAGS)
 *_GCC48_*_ASLPP_FLAGS                  = DEF(GCC_ASLPP_FLAGS)
@@ -5303,7 +5331,6 @@ RELEASE_GCC48_AARCH64_CC_FLAGS   = DEF(GCC48_AARCH64_CC_FLAGS) -Wno-unused-but-s
 *_GCC49_*_MAKE_PATH                    = DEF(GCC49_IA32_PREFIX)make
 *_GCC49_*_*_DLL                        = ENV(GCC49_DLL)
 *_GCC49_*_ASL_PATH                     = DEF(UNIX_IASL_BIN)
-*_GCC49_*_DTC_PATH                     = DEF(DTC_BIN)
 
 *_GCC49_*_PP_FLAGS                     = DEF(GCC_PP_FLAGS)
 *_GCC49_*_ASLPP_FLAGS                  = DEF(GCC_ASLPP_FLAGS)
@@ -5449,7 +5476,6 @@ RELEASE_GCC49_AARCH64_DLINK_FLAGS  = DEF(GCC49_AARCH64_DLINK_FLAGS)
 *_GCC5_*_MAKE_PATH               = DEF(GCC5_IA32_PREFIX)make
 *_GCC5_*_*_DLL                   = ENV(GCC5_DLL)
 *_GCC5_*_ASL_PATH                = DEF(UNIX_IASL_BIN)
-*_GCC5_*_DTC_PATH                = DEF(DTC_BIN)
 
 *_GCC5_*_PP_FLAGS                = DEF(GCC_PP_FLAGS)
 *_GCC5_*_ASLPP_FLAGS             = DEF(GCC_ASLPP_FLAGS)
@@ -5606,7 +5632,6 @@ RELEASE_GCC5_AARCH64_DLINK_FLAGS = DEF(GCC5_AARCH64_DLINK_FLAGS) -flto -Os -L$(W
 *_CLANG35_*_MAKE_PATH            = make
 *_CLANG35_*_*_DLL                = ENV(CLANG35_DLL)
 *_CLANG35_*_ASL_PATH             = DEF(UNIX_IASL_BIN)
-*_CLANG35_*_DTC_PATH             = DEF(DTC_BIN)
 
 *_CLANG35_*_PP_FLAGS             = DEF(GCC_PP_FLAGS)
 *_CLANG35_*_ASLCC_FLAGS          = DEF(GCC_ASLCC_FLAGS)
@@ -5684,7 +5709,6 @@ RELEASE_CLANG35_AARCH64_CC_FLAGS = DEF(CLANG35_AARCH64_CC_FLAGS) $(ARCHCC_FLAGS)
 *_CLANG38_*_MAKE_PATH               = make
 *_CLANG38_*_*_DLL                   = ENV(CLANG38_DLL)
 *_CLANG38_*_ASL_PATH                = DEF(UNIX_IASL_BIN)
-*_CLANG38_*_DTC_PATH                = DEF(DTC_BIN)
 
 *_CLANG38_*_APP_FLAGS               =
 *_CLANG38_*_ASL_FLAGS               = DEF(IASL_FLAGS)

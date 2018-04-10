@@ -1119,7 +1119,7 @@ StrnCpy (
   IN      CONST CHAR16              *Source,
   IN      UINTN                     Length
   );
-#endif
+#endif // !defined (DISABLE_NEW_DEPRECATED_INTERFACES)
 
 /**
   Returns the length of a Null-terminated Unicode string.
@@ -1338,7 +1338,7 @@ StrnCat (
   IN      CONST CHAR16              *Source,
   IN      UINTN                     Length
   );
-#endif
+#endif // !defined (DISABLE_NEW_DEPRECATED_INTERFACES)
 
 /**
   Returns the first occurrence of a Null-terminated Unicode sub-string
@@ -1811,7 +1811,7 @@ UnicodeStrToAsciiStr (
   OUT     CHAR8                     *Destination
   );
 
-#endif
+#endif // !defined (DISABLE_NEW_DEPRECATED_INTERFACES)
 
 /**
   Convert a Null-terminated Unicode string to a Null-terminated
@@ -1985,7 +1985,7 @@ AsciiStrnCpy (
   IN      CONST CHAR8               *Source,
   IN      UINTN                     Length
   );
-#endif
+#endif // !defined (DISABLE_NEW_DEPRECATED_INTERFACES)
 
 /**
   Returns the length of a Null-terminated ASCII string.
@@ -2229,7 +2229,7 @@ AsciiStrnCat (
   IN      CONST CHAR8               *Source,
   IN      UINTN                     Length
   );
-#endif
+#endif // !defined (DISABLE_NEW_DEPRECATED_INTERFACES)
 
 /**
   Returns the first occurrence of a Null-terminated ASCII sub-string
@@ -2670,7 +2670,7 @@ AsciiStrToUnicodeStr (
   OUT     CHAR16                    *Destination
   );
 
-#endif
+#endif // !defined (DISABLE_NEW_DEPRECATED_INTERFACES)
 
 /**
   Convert one Null-terminated ASCII string to a Null-terminated
@@ -6495,7 +6495,7 @@ AsmPalCall (
   IN UINT64  Arg3,
   IN UINT64  Arg4
   );
-#endif
+#endif // defined (MDE_CPU_IPF)
 
 #if defined (MDE_CPU_IA32) || defined (MDE_CPU_X64)
 ///
@@ -6730,7 +6730,7 @@ typedef union {
 } IA32_TSS_DESCRIPTOR;
 #pragma pack ()
 
-#endif
+#endif // defined (MDE_CPU_IA32)
 
 #if defined (MDE_CPU_X64)
 ///
@@ -6792,7 +6792,7 @@ typedef union {
 } IA32_TSS_DESCRIPTOR;
 #pragma pack ()
 
-#endif
+#endif // defined (MDE_CPU_X64)
 
 ///
 /// Byte packed structure for an FP/SSE/SSE2 context.
@@ -6880,6 +6880,20 @@ typedef struct {
 #define THUNK_ATTRIBUTE_BIG_REAL_MODE             0x00000001
 #define THUNK_ATTRIBUTE_DISABLE_A20_MASK_INT_15   0x00000002
 #define THUNK_ATTRIBUTE_DISABLE_A20_MASK_KBD_CTRL 0x00000004
+
+///
+/// Type definition for representing labels in NASM source code that allow for
+/// the patching of immediate operands of IA32 and X64 instructions.
+///
+/// While the type is technically defined as a function type (note: not a
+/// pointer-to-function type), such labels in NASM source code never stand for
+/// actual functions, and identifiers declared with this function type should
+/// never be called. This is also why the EFIAPI calling convention specifier
+/// is missing from the typedef, and why the typedef does not follow the usual
+/// edk2 coding style for function (or pointer-to-function) typedefs. The VOID
+/// return type and the VOID argument list are merely artifacts.
+///
+typedef VOID (X86_ASSEMBLY_PATCH_LABEL) (VOID);
 
 /**
   Retrieves CPUID information.
@@ -9068,7 +9082,47 @@ AsmWriteTr (
   IN UINT16 Selector
   );
 
-#endif
-#endif
+/**
+  Patch the immediate operand of an IA32 or X64 instruction such that the byte,
+  word, dword or qword operand is encoded at the end of the instruction's
+  binary representation.
 
+  This function should be used to update object code that was compiled with
+  NASM from assembly source code. Example:
 
+  NASM source code:
+
+        mov     eax, strict dword 0 ; the imm32 zero operand will be patched
+    ASM_PFX(gPatchCr3):
+        mov     cr3, eax
+
+  C source code:
+
+    X86_ASSEMBLY_PATCH_LABEL gPatchCr3;
+    PatchInstructionX86 (gPatchCr3, AsmReadCr3 (), 4);
+
+  @param[out] InstructionEnd  Pointer right past the instruction to patch. The
+                              immediate operand to patch is expected to
+                              comprise the trailing bytes of the instruction.
+                              If InstructionEnd is closer to address 0 than
+                              ValueSize permits, then ASSERT().
+
+  @param[in] PatchValue       The constant to write to the immediate operand.
+                              The caller is responsible for ensuring that
+                              PatchValue can be represented in the byte, word,
+                              dword or qword operand (as indicated through
+                              ValueSize); otherwise ASSERT().
+
+  @param[in] ValueSize        The size of the operand in bytes; must be 1, 2,
+                              4, or 8. ASSERT() otherwise.
+**/
+VOID
+EFIAPI
+PatchInstructionX86 (
+  OUT X86_ASSEMBLY_PATCH_LABEL *InstructionEnd,
+  IN  UINT64                   PatchValue,
+  IN  UINTN                    ValueSize
+  );
+
+#endif // defined (MDE_CPU_IA32) || defined (MDE_CPU_X64)
+#endif // !defined (__BASE_LIB__)

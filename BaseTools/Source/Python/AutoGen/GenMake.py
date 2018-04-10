@@ -1,7 +1,7 @@
 ## @file
 # Create makefile for MS nmake and GNU make
 #
-# Copyright (c) 2007 - 2017, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2007 - 2018, Intel Corporation. All rights reserved.<BR>
 # This program and the accompanying materials
 # are licensed and made available under the terms and conditions of the BSD License
 # which accompanies this distribution.  The full text of the license may be found at
@@ -25,6 +25,7 @@ from Common.Misc import *
 from Common.String import *
 from BuildEngine import *
 import Common.GlobalData as GlobalData
+from collections import OrderedDict
 
 ## Regular expression for finding header file inclusions
 gIncludePattern = re.compile(r"^[ \t]*#?[ \t]*include(?:[ \t]*(?:\\(?:\r\n|\r|\n))*[ \t]*)*(?:\(?[\"<]?[ \t]*)([-\w.\\/() \t]+)(?:[ \t]*[\">]?\)?)", re.MULTILINE | re.UNICODE | re.IGNORECASE)
@@ -442,7 +443,7 @@ cleanlib:
         self.LibraryMakefileList = []
         self.LibraryBuildDirectoryList = []
         self.SystemLibraryList = []
-        self.Macros = sdict()
+        self.Macros = OrderedDict()
         self.Macros["OUTPUT_DIR"      ] = self._AutoGenObject.Macros["OUTPUT_DIR"]
         self.Macros["DEBUG_DIR"       ] = self._AutoGenObject.Macros["DEBUG_DIR"]
         self.Macros["MODULE_BUILD_DIR"] = self._AutoGenObject.Macros["MODULE_BUILD_DIR"]
@@ -491,7 +492,7 @@ cleanlib:
             ImageEntryPoint = "_ModuleEntryPoint"
 
         for k, v in self._AutoGenObject.Module.Defines.iteritems():
-            if k not in self._AutoGenObject.Macros.keys():
+            if k not in self._AutoGenObject.Macros:
                 self._AutoGenObject.Macros[k] = v
 
         if 'MODULE_ENTRY_POINT' not in self._AutoGenObject.Macros.keys():
@@ -798,9 +799,13 @@ cleanlib:
                                     Tool = Flag
                                     break
                         if Tool:
+                            if 'PATH' not in self._AutoGenObject._BuildOption[Tool]:
+                                EdkLogger.error("build", AUTOGEN_ERROR, "%s_PATH doesn't exist in %s ToolChain and %s Arch." %(Tool, self._AutoGenObject.ToolChain, self._AutoGenObject.Arch), ExtraData="[%s]" % str(self._AutoGenObject))
                             SingleCommandLength += len(self._AutoGenObject._BuildOption[Tool]['PATH'])
                             for item in SingleCommandList[1:]:
                                 if FlagDict[Tool]['Macro'] in item:
+                                    if 'FLAGS' not in self._AutoGenObject._BuildOption[Tool]:
+                                        EdkLogger.error("build", AUTOGEN_ERROR, "%s_FLAGS doesn't exist in %s ToolChain and %s Arch." %(Tool, self._AutoGenObject.ToolChain, self._AutoGenObject.Arch), ExtraData="[%s]" % str(self._AutoGenObject))
                                     Str = self._AutoGenObject._BuildOption[Tool]['FLAGS']
                                     for Option in self._AutoGenObject.BuildOption.keys():
                                         for Attr in self._AutoGenObject.BuildOption[Option]:
@@ -902,12 +907,12 @@ cleanlib:
             # skip non-C files
             if File.Ext not in [".c", ".C"] or File.Name == "AutoGen.c":
                 continue
-            elif DepSet == None:
+            elif DepSet is None:
                 DepSet = set(self.FileDependency[File])
             else:
                 DepSet &= set(self.FileDependency[File])
         # in case nothing in SourceFileList
-        if DepSet == None:
+        if DepSet is None:
             DepSet = set()
         #
         # Extract common files list in the dependency files
@@ -1512,7 +1517,7 @@ class TopLevelMakefile(BuildFile):
 
         # TRICK: for not generating GenFds call in makefile if no FDF file
         MacroList = []
-        if PlatformInfo.FdfFile != None and PlatformInfo.FdfFile != "":
+        if PlatformInfo.FdfFile is not None and PlatformInfo.FdfFile != "":
             FdfFileList = [PlatformInfo.FdfFile]
             # macros passed to GenFds
             MacroList.append('"%s=%s"' % ("EFI_SOURCE", GlobalData.gEfiSource.replace('\\', '\\\\')))
@@ -1547,20 +1552,15 @@ class TopLevelMakefile(BuildFile):
         if GlobalData.gIgnoreSource:
             ExtraOption += " --ignore-sources"
 
-        if GlobalData.BuildOptionPcd:
-            for index, option in enumerate(GlobalData.gCommand):
-                if "--pcd" == option and GlobalData.gCommand[index+1]:
-                    pcdName, pcdValue = GlobalData.gCommand[index+1].split('=')
-                    if pcdValue.startswith('H'):
-                        pcdValue = 'H' + '"' + pcdValue[1:] + '"'
-                        ExtraOption += " --pcd " + pcdName + '=' + pcdValue
-                    elif pcdValue.startswith("L'"):
-                        ExtraOption += "--pcd " + pcdName + '=' + pcdValue
-                    elif pcdValue.startswith('L'):
-                        pcdValue = 'L' + '"' + pcdValue[1:] + '"'
-                        ExtraOption += " --pcd " + pcdName + '=' + pcdValue
-                    else:
-                        ExtraOption += " --pcd " + GlobalData.gCommand[index+1]
+        for pcd in GlobalData.BuildOptionPcd:
+            if pcd[2]:
+                pcdname = '.'.join(pcd[0:3])
+            else:
+                pcdname = '.'.join(pcd[0:2])
+            if pcd[3].startswith('{'):
+                ExtraOption += " --pcd " + pcdname + '=' + 'H' + '"' + pcd[3] + '"'
+            else:
+                ExtraOption += " --pcd " + pcdname + '=' + pcd[3]
 
         MakefileName = self._FILE_NAME_[self._FileType]
         SubBuildCommandList = []

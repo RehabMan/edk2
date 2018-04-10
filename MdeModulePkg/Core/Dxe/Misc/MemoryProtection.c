@@ -19,7 +19,7 @@
 
   Once the image is unloaded, the protection is removed automatically.
 
-Copyright (c) 2017, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2017 - 2018, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -801,6 +801,9 @@ InitializeDxeNxMemoryProtectionPolicy (
   UINT64                            Attributes;
   LIST_ENTRY                        *Link;
   EFI_GCD_MAP_ENTRY                 *Entry;
+  EFI_PEI_HOB_POINTERS              Hob;
+  EFI_HOB_MEMORY_ALLOCATION         *MemoryHob;
+  EFI_PHYSICAL_ADDRESS              StackBase;
 
   //
   // Get the EFI memory map.
@@ -832,6 +835,40 @@ InitializeDxeNxMemoryProtectionPolicy (
   } while (Status == EFI_BUFFER_TOO_SMALL);
   ASSERT_EFI_ERROR (Status);
 
+  StackBase = 0;
+  if (PcdGetBool (PcdCpuStackGuard)) {
+    //
+    // Get the base of stack from Hob.
+    //
+    Hob.Raw = GetHobList ();
+    while ((Hob.Raw = GetNextHob (EFI_HOB_TYPE_MEMORY_ALLOCATION, Hob.Raw)) != NULL) {
+      MemoryHob = Hob.MemoryAllocation;
+      if (CompareGuid(&gEfiHobMemoryAllocStackGuid, &MemoryHob->AllocDescriptor.Name)) {
+        DEBUG ((
+          DEBUG_INFO,
+          "%a: StackBase = 0x%016lx  StackSize = 0x%016lx\n",
+          __FUNCTION__,
+          MemoryHob->AllocDescriptor.MemoryBaseAddress,
+          MemoryHob->AllocDescriptor.MemoryLength
+          ));
+
+        StackBase = MemoryHob->AllocDescriptor.MemoryBaseAddress;
+        //
+        // Ensure the base of the stack is page-size aligned.
+        //
+        ASSERT ((StackBase & EFI_PAGE_MASK) == 0);
+        break;
+      }
+      Hob.Raw = GET_NEXT_HOB (Hob);
+    }
+
+    //
+    // Ensure the base of stack can be found from Hob when stack guard is
+    // enabled.
+    //
+    ASSERT (StackBase != 0);
+  }
+
   DEBUG ((
     DEBUG_INFO,
     "%a: applying strict permissions to active memory regions\n",
@@ -846,24 +883,41 @@ InitializeDxeNxMemoryProtectionPolicy (
 
     Attributes = GetPermissionAttributeForMemoryType (MemoryMapEntry->Type);
     if (Attributes != 0) {
+      SetUefiImageMemoryAttributes (
+        MemoryMapEntry->PhysicalStart,
+        LShiftU64 (MemoryMapEntry->NumberOfPages, EFI_PAGE_SHIFT),
+        Attributes);
+
+      //
+      // Add EFI_MEMORY_RP attribute for page 0 if NULL pointer detection is
+      // enabled.
+      //
       if (MemoryMapEntry->PhysicalStart == 0 &&
           PcdGet8 (PcdNullPointerDetectionPropertyMask) != 0) {
 
         ASSERT (MemoryMapEntry->NumberOfPages > 0);
-        //
-        // Skip page 0 if NULL pointer detection is enabled to avoid attributes
-        // overwritten.
-        //
         SetUefiImageMemoryAttributes (
-          MemoryMapEntry->PhysicalStart + EFI_PAGE_SIZE,
-          LShiftU64 (MemoryMapEntry->NumberOfPages - 1, EFI_PAGE_SHIFT),
-          Attributes);
-      } else {
-        SetUefiImageMemoryAttributes (
-          MemoryMapEntry->PhysicalStart,
-          LShiftU64 (MemoryMapEntry->NumberOfPages, EFI_PAGE_SHIFT),
-          Attributes);
+          0,
+          EFI_PAGES_TO_SIZE (1),
+          EFI_MEMORY_RP | Attributes);
       }
+
+      //
+      // Add EFI_MEMORY_RP attribute for the first page of the stack if stack
+      // guard is enabled.
+      //
+      if (StackBase != 0 &&
+          (StackBase >= MemoryMapEntry->PhysicalStart &&
+           StackBase <  MemoryMapEntry->PhysicalStart +
+                        LShiftU64 (MemoryMapEntry->NumberOfPages, EFI_PAGE_SHIFT)) &&
+          PcdGetBool (PcdCpuStackGuard)) {
+
+        SetUefiImageMemoryAttributes (
+          StackBase,
+          EFI_PAGES_TO_SIZE (1),
+          EFI_MEMORY_RP | Attributes);
+      }
+
     }
     MemoryMapEntry = NEXT_MEMORY_DESCRIPTOR (MemoryMapEntry, DescriptorSize);
   }
@@ -946,6 +1000,11 @@ MemoryProtectionCpuArchProtocolNotify (
   if (PcdGet64 (PcdDxeNxMemoryProtectionPolicy) != 0) {
     InitializeDxeNxMemoryProtectionPolicy ();
   }
+
+  //
+  // Call notify function meant for Heap Guard.
+  //
+  HeapGuardCpuArchProtocolNotify ();
 
   if (mImageProtectionPolicy == 0) {
     return;

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #
 
-from Common.Misc import sdict
+from collections import OrderedDict
 from Common.LongFilePathSupport import OpenLongFilePath as open
 
 gEFI_SOURCE = ''
@@ -70,11 +70,7 @@ gSOURCE_FILES = 'Log_SourceFiles.log'
 gOP_SOURCE_FILES = open(gSOURCE_FILES, 'w+')
 
 # Dict for GUID found in DEC files
-gGuidDict = sdict()
-
-# Dict for hard coded GUID Macros
-# {GuidName : [GuidMacro : GuidValue]}
-gGuidMacroDict = sdict()
+gGuidDict = dict()
 
 # Dict for PPI
 gPpiList = {}
@@ -83,12 +79,12 @@ gPpiList = {}
 gProtocolList = {}
 
 # Dict for consumed PPI function calling
-gConsumedPpiLibrary = sdict()
+gConsumedPpiLibrary = OrderedDict()
 gConsumedPpiLibrary['EfiCommonLocateInterface'] = 0
 gConsumedPpiLibrary['PeiServicesLocatePpi'] = 0
 
 # Dict for produced PROTOCOL function calling
-gProducedProtocolLibrary = sdict()
+gProducedProtocolLibrary = OrderedDict()
 gProducedProtocolLibrary['RegisterEsalClass'] = 0
 gProducedProtocolLibrary['CoreInstallProtocolInterface'] = 1
 gProducedProtocolLibrary['CoreInstallMultipleProtocolInterfaces'] = -1
@@ -99,14 +95,14 @@ gProducedProtocolLibrary['LibInstallProtocolInterfaces'] = 1
 gProducedProtocolLibrary['LibReinstallProtocolInterfaces'] = 1
 
 # Dict for consumed PROTOCOL function calling
-gConsumedProtocolLibrary = sdict()
+gConsumedProtocolLibrary = OrderedDict()
 gConsumedProtocolLibrary['EfiHandleProtocol'] = 0
 gConsumedProtocolLibrary['EfiLocateProtocolHandleBuffers'] = 0
 gConsumedProtocolLibrary['EfiLocateProtocolInterface'] = 0
 gConsumedProtocolLibrary['EfiHandleProtocol'] = 1
 
 # Dict for callback PROTOCOL function callling
-gCallbackProtocolLibrary = sdict()
+gCallbackProtocolLibrary = OrderedDict()
 gCallbackProtocolLibrary['EfiRegisterProtocolCallback'] = 2
 
 # Dict for ARCH PROTOCOL

@@ -3,7 +3,7 @@
   The GCD services are used to manage the memory and I/O regions that
   are accessible to the CPU that is executing the DXE core.
 
-Copyright (c) 2006 - 2017, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2006 - 2018, Intel Corporation. All rights reserved.<BR>
 This program and the accompanying materials
 are licensed and made available under the terms and conditions of the BSD License
 which accompanies this distribution.  The full text of the license may be found at
@@ -16,6 +16,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include "DxeMain.h"
 #include "Gcd.h"
+#include "Mem/HeapGuard.h"
 
 #define MINIMUM_INITIAL_MEMORY_SIZE 0x10000
 
@@ -46,8 +47,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #define NONEXCLUSIVE_MEMORY_ATTRIBUTES (EFI_MEMORY_XP | EFI_MEMORY_RP | \
                                         EFI_MEMORY_RO)
-
-#define INVALID_CPU_ARCH_ATTRIBUTES   0xffffffff
 
 //
 // Module Variables
@@ -391,12 +390,21 @@ CoreAllocateGcdMapEntry (
   IN OUT EFI_GCD_MAP_ENTRY  **BottomEntry
   )
 {
+  //
+  // Set to mOnGuarding to TRUE before memory allocation. This will make sure
+  // that the entry memory is not "guarded" by HeapGuard. Otherwise it might
+  // cause problem when it's freed (if HeapGuard is enabled).
+  //
+  mOnGuarding = TRUE;
   *TopEntry = AllocateZeroPool (sizeof (EFI_GCD_MAP_ENTRY));
+  mOnGuarding = FALSE;
   if (*TopEntry == NULL) {
     return EFI_OUT_OF_RESOURCES;
   }
 
+  mOnGuarding = TRUE;
   *BottomEntry = AllocateZeroPool (sizeof (EFI_GCD_MAP_ENTRY));
+  mOnGuarding = FALSE;
   if (*BottomEntry == NULL) {
     CoreFreePool (*TopEntry);
     return EFI_OUT_OF_RESOURCES;
@@ -663,11 +671,6 @@ ConverToCpuArchAttributes (
 {
   UINT64      CpuArchAttributes;
 
-  if ((Attributes & ~(EXCLUSIVE_MEMORY_ATTRIBUTES |
-                      NONEXCLUSIVE_MEMORY_ATTRIBUTES)) != 0) {
-    return INVALID_CPU_ARCH_ATTRIBUTES;
-  }
-
   CpuArchAttributes = Attributes & NONEXCLUSIVE_MEMORY_ATTRIBUTES;
 
   if ( (Attributes & EFI_MEMORY_UC) == EFI_MEMORY_UC) {
@@ -863,12 +866,30 @@ CoreConvertSpace (
   }
   ASSERT (TopEntry != NULL && BottomEntry != NULL);
 
+  //
+  // Initialize CpuArchAttributes to suppress incorrect compiler/analyzer warnings.
+  //
+  CpuArchAttributes = 0;
   if (Operation == GCD_SET_ATTRIBUTES_MEMORY_OPERATION) {
     //
     // Call CPU Arch Protocol to attempt to set attributes on the range
     //
     CpuArchAttributes = ConverToCpuArchAttributes (Attributes);
-    if (CpuArchAttributes != INVALID_CPU_ARCH_ATTRIBUTES) {
+    //
+    // CPU arch attributes include page attributes and cache attributes. 
+    // Only page attributes supports to be cleared, but not cache attributes.
+    // Caller is expected to use GetMemorySpaceDescriptor() to get the current
+    // attributes, AND/OR attributes, and then calls SetMemorySpaceAttributes()
+    // to set the new attributes.
+    // So 0 CPU arch attributes should not happen as memory should always have
+    // a cache attribute (no matter UC or WB, etc). 
+    //
+    // Here, 0 CPU arch attributes will be filtered to be compatible with the
+    // case that caller just calls SetMemorySpaceAttributes() with none CPU
+    // arch attributes (for example, RUNTIME) as the purpose of the case is not
+    // to clear CPU arch attributes.
+    //
+    if (CpuArchAttributes != 0) {
       if (gCpu == NULL) {
         Status = EFI_NOT_AVAILABLE_YET;
       } else {
@@ -931,6 +952,13 @@ CoreConvertSpace (
     // Set attributes operation
     //
     case GCD_SET_ATTRIBUTES_MEMORY_OPERATION:
+      if (CpuArchAttributes == 0) {
+        //
+        // Keep original CPU arch attributes when caller just calls
+        // SetMemorySpaceAttributes() with none CPU arch attributes (for example, RUNTIME).
+        //
+        Attributes |= (Entry->Attributes & (EXCLUSIVE_MEMORY_ATTRIBUTES | NONEXCLUSIVE_MEMORY_ATTRIBUTES));
+      }
       Entry->Attributes = Attributes;
       break;
     //

@@ -217,6 +217,7 @@ M: Kelly Steele <kelly.steele@intel.com>
 SecurityPkg
 W: https://github.com/tianocore/tianocore.github.io/wiki/SecurityPkg
 M: Chao Zhang <chao.b.zhang@intel.com>
+M: Jiewen Yao <jiewen.yao@intel.com>
 
 ShellBinPkg
 W: https://github.com/tianocore/tianocore.github.io/wiki/ShellPkg
@@ -259,3 +260,8 @@ M: Mang Guo <mang.guo@intel.com>
 Vlv2TbltDevicePkg
 M: David Wei <david.wei@intel.com>
 M: Mang Guo <mang.guo@intel.com>
+
+StandaloneMmPkg
+M: Achin Gupta <achin.gupta@arm.com>
+M: Jiewen Yao <jiewen.yao@intel.com>
+R: Supreeth Venkatesh <supreeth.venkatesh@arm.com>

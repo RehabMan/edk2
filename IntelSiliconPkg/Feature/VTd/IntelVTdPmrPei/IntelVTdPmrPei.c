@@ -29,9 +29,6 @@
 
 #include "IntelVTdPmrPei.h"
 
-#define  TOTAL_DMA_BUFFER_SIZE    SIZE_4MB
-#define  TOTAL_DMA_BUFFER_SIZE_S3 SIZE_1MB
-
 EFI_GUID mVTdInfoGuid = {
   0x222f5e30, 0x5cd, 0x49c6, { 0x8a, 0xc, 0x36, 0xd6, 0x58, 0x41, 0xe0, 0x82 }
 };
@@ -189,7 +186,7 @@ PeiIoMmuMap (
   if (Operation == EdkiiIoMmuOperationBusMasterCommonBuffer ||
       Operation == EdkiiIoMmuOperationBusMasterCommonBuffer64) {
     *DeviceAddress = (UINTN)HostAddress;
-    *Mapping = 0;
+    *Mapping = NULL;
     return EFI_SUCCESS;
   }
 
@@ -266,7 +263,7 @@ PeiIoMmuUnmap (
   }
 
   if (Mapping == NULL) {
-    return EFI_INVALID_PARAMETER;
+    return EFI_SUCCESS;
   }
 
   MapInfo = Mapping;
@@ -798,9 +795,9 @@ IntelVTdPmrInitialize (
   PeiServicesGetBootMode (&BootMode);
 
   if (BootMode == BOOT_ON_S3_RESUME) {
-    DmaBufferInfo->DmaBufferSize = TOTAL_DMA_BUFFER_SIZE_S3;
+    DmaBufferInfo->DmaBufferSize = PcdGet32 (PcdVTdPeiDmaBufferSizeS3);
   } else {
-    DmaBufferInfo->DmaBufferSize = TOTAL_DMA_BUFFER_SIZE;
+    DmaBufferInfo->DmaBufferSize = PcdGet32 (PcdVTdPeiDmaBufferSize);
   }
 
   Status = PeiServicesNotifyPpi (&mVTdInfoNotifyDesc);

@@ -1,7 +1,7 @@
 ## @file
 # preprocess source file
 #
-#  Copyright (c) 2007 - 2014, Intel Corporation. All rights reserved.<BR>
+#  Copyright (c) 2007 - 2018, Intel Corporation. All rights reserved.<BR>
 #
 #  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
@@ -72,40 +72,6 @@ class CodeFragmentCollector:
 
         self.__Token = ""
         self.__SkippedChars = ""
-
-    ## __IsWhiteSpace() method
-    #
-    #   Whether char at current FileBufferPos is whitespace
-    #
-    #   @param  self        The object pointer
-    #   @param  Char        The char to test
-    #   @retval True        The char is a kind of white space
-    #   @retval False       The char is NOT a kind of white space
-    #
-    def __IsWhiteSpace(self, Char):
-        if Char in (T_CHAR_NULL, T_CHAR_CR, T_CHAR_SPACE, T_CHAR_TAB, T_CHAR_LF):
-            return True
-        else:
-            return False
-
-    ## __SkipWhiteSpace() method
-    #
-    #   Skip white spaces from current char, return number of chars skipped
-    #
-    #   @param  self        The object pointer
-    #   @retval Count       The number of chars skipped
-    #
-    def __SkipWhiteSpace(self):
-        Count = 0
-        while not self.__EndOfFile():
-            Count += 1
-            if self.__CurrentChar() in (T_CHAR_NULL, T_CHAR_CR, T_CHAR_LF, T_CHAR_SPACE, T_CHAR_TAB):
-                self.__SkippedChars += str(self.__CurrentChar())
-                self.__GetOneChar()
-
-            else:
-                Count = Count - 1
-                return Count
 
     ## __EndOfFile() method
     #
@@ -291,7 +257,7 @@ class CodeFragmentCollector:
                 InCharLiteral = not InCharLiteral
             # meet new line, then no longer in a comment for // and '#'
             if self.__CurrentChar() == T_CHAR_LF:
-                if HashComment and PPDirectiveObj != None:
+                if HashComment and PPDirectiveObj is not None:
                     if PPDirectiveObj.Content.rstrip(T_CHAR_CR).endswith(T_CHAR_BACKSLASH):
                         PPDirectiveObj.Content += T_CHAR_LF
                         PPExtend = True

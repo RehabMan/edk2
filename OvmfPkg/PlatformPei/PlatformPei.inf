@@ -31,11 +31,14 @@
 [Sources]
   AmdSev.c
   Cmos.c
+  Cmos.h
   FeatureControl.c
   Fv.c
   MemDetect.c
   Platform.c
+  Platform.h
   Xen.c
+  Xen.h
 
 [Packages]
   IntelFrameworkModulePkg/IntelFrameworkModulePkg.dec

@@ -241,7 +241,7 @@ class MetaFileParser(object):
                 self.Start()
 
         # No specific ARCH or Platform given, use raw data
-        if self._RawTable and (len(DataInfo) == 1 or DataInfo[1] == None):
+        if self._RawTable and (len(DataInfo) == 1 or DataInfo[1] is None):
             return self._FilterRecordList(self._RawTable.Query(*DataInfo), self._Arch)
 
         # Do post-process if necessary
@@ -620,7 +620,7 @@ class InfParser(MetaFileParser):
             self._ValueList = ['', '', '']
             # parse current line, result will be put in self._ValueList
             self._SectionParser[self._SectionType](self)
-            if self._ValueList == None or self._ItemType == MODEL_META_DATA_DEFINE:
+            if self._ValueList is None or self._ItemType == MODEL_META_DATA_DEFINE:
                 self._ItemType = -1
                 Comments = []
                 continue
@@ -952,7 +952,7 @@ class DscParser(MetaFileParser):
 
             self._ValueList = ['', '', '']
             self._SectionParser[SectionType](self)
-            if self._ValueList == None:
+            if self._ValueList is None:
                 continue
             #
             # Model, Value1, Value2, Value3, Arch, ModuleType, BelongsToItem=-1, BelongsToFile=-1,
@@ -1243,6 +1243,13 @@ class DscParser(MetaFileParser):
         # PCD cannot be referenced in macro definition
         if self._ItemType not in [MODEL_META_DATA_DEFINE, MODEL_META_DATA_GLOBAL_DEFINE]:
             Macros.update(self._Symbols)
+        if GlobalData.BuildOptionPcd:
+            for Item in GlobalData.BuildOptionPcd:
+                if type(Item) is tuple:
+                    continue
+                PcdName, TmpValue = Item.split("=")
+                TmpValue = BuildOptionValue(TmpValue, self._GuidDict)
+                Macros[PcdName.strip()] = TmpValue
         return Macros
 
     def _PostProcess(self):
@@ -1354,7 +1361,7 @@ class DscParser(MetaFileParser):
                                 File=self._FileWithError, ExtraData=' '.join(self._ValueList),
                                 Line=self._LineIndex + 1)
 
-            if self._ValueList == None:
+            if self._ValueList is None:
                 continue
 
             NewOwner = self._IdMapping.get(Owner, -1)
@@ -1733,7 +1740,7 @@ class DecParser(MetaFileParser):
             # section content
             self._ValueList = ['', '', '']
             self._SectionParser[self._SectionType[0]](self)
-            if self._ValueList == None or self._ItemType == MODEL_META_DATA_DEFINE:
+            if self._ValueList is None or self._ItemType == MODEL_META_DATA_DEFINE:
                 self._ItemType = -1
                 self._Comments = []
                 continue
@@ -1994,6 +2001,7 @@ class DecParser(MetaFileParser):
             PcdValue = ValueList[0]
             if PcdValue:
                 try:
+                    self._GuidDict.update(self._AllPcdDict)
                     ValueList[0] = ValueExpressionEx(ValueList[0], ValueList[1], self._GuidDict)(True)
                 except BadExpression, Value:
                     EdkLogger.error('Parser', FORMAT_INVALID, Value, ExtraData=self._CurrentLine, File=self.MetaFile, Line=self._LineIndex + 1)

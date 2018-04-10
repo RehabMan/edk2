@@ -21,6 +21,7 @@ from Common.Misc import PathClass
 from Common.LongFilePathSupport import LongFilePath
 import re
 import os
+from Common.GlobalData import gIdentifierPattern
 
 IMAGE_TOKEN = re.compile('IMAGE_TOKEN *\(([A-Z0-9_]+) *\)', re.MULTILINE | re.UNICODE)
 
@@ -76,7 +77,7 @@ class IdfFileClassObject(object):
                 self.LoadIdfFile(File)
 
     def LoadIdfFile(self, File = None):
-        if File == None:
+        if File is None:
             EdkLogger.error("Image Definition File Parser", PARSER_ERROR, 'No Image definition file is given.')
         self.File = File
 
@@ -105,8 +106,8 @@ class IdfFileClassObject(object):
                     EdkLogger.error("Image Definition File Parser", PARSER_ERROR, 'The format is not match #image IMAGE_ID [TRANSPARENT] ImageFileName in Line %s of File %s.' % (LineNo, File.Path))
                 if Len == 4 and LineDetails[2] != 'TRANSPARENT':
                     EdkLogger.error("Image Definition File Parser", PARSER_ERROR, 'Please use the keyword "TRANSPARENT" to describe the transparency setting in Line %s of File %s.' % (LineNo, File.Path))
-                MatchString = re.match('^[a-zA-Z][a-zA-Z0-9_]*$', LineDetails[1], re.UNICODE)
-                if MatchString == None or MatchString.end(0) != len(LineDetails[1]):
+                MatchString = gIdentifierPattern.match(LineDetails[1])
+                if MatchString is None:
                     EdkLogger.error('Image Definition  File Parser', FORMAT_INVALID, 'The Image token name %s defined in Idf file %s contains the invalid character.' % (LineDetails[1], File.Path))
                 if LineDetails[1] not in self.ImageIDList:
                     self.ImageIDList.append(LineDetails[1])

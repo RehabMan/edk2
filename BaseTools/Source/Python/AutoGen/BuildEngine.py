@@ -161,7 +161,7 @@ class FileBuildRule:
 
         # Check input files
         self.IsMultipleInput = False
-        self.SourceFileExtList = []
+        self.SourceFileExtList = set()
         for File in Input:
             Base, Ext = os.path.splitext(File)
             if Base.find("*") >= 0:
@@ -172,8 +172,7 @@ class FileBuildRule:
                 # There's no "*" and "?" in file name
                 self.ExtraSourceFileList.append(File)
                 continue
-            if Ext not in self.SourceFileExtList:
-                self.SourceFileExtList.append(Ext)
+            self.SourceFileExtList.add(Ext)
 
         # Check output files
         self.DestFileList = []
@@ -193,16 +192,6 @@ class FileBuildRule:
         DestString = ", ".join(self.DestFileList)
         CommandString = "\n\t".join(self.CommandList)
         return "%s : %s\n\t%s" % (DestString, SourceString, CommandString)
-
-    ## Check if given file extension is supported by this rule
-    #
-    #   @param  FileExt     The extension of a file
-    #
-    #   @retval True        If the extension is supported
-    #   @retval False       If the extension is not supported
-    #
-    def IsSupported(self, FileExt):
-        return FileExt in self.SourceFileExtList
 
     def Instantiate(self, Macros={}):
         NewRuleObject = copy.copy(self)
@@ -346,12 +335,12 @@ class BuildRule:
     def __init__(self, File=None, Content=None, LineIndex=0, SupportedFamily=["MSFT", "INTEL", "GCC", "RVCT"]):
         self.RuleFile = File
         # Read build rules from file if it's not none
-        if File != None:
+        if File is not None:
             try:
                 self.RuleContent = open(File, 'r').readlines()
             except:
                 EdkLogger.error("build", FILE_OPEN_FAILURE, ExtraData=File)
-        elif Content != None:
+        elif Content is not None:
             self.RuleContent = Content
         else:
             EdkLogger.error("build", PARAMETER_MISSING, ExtraData="No rule file or string given")
@@ -365,8 +354,8 @@ class BuildRule:
         self._State = ""
         self._RuleInfo = tdict(True, 2)     # {toolchain family : {"InputFile": {}, "OutputFile" : [], "Command" : []}}
         self._FileType = ''
-        self._BuildTypeList = []
-        self._ArchList = []
+        self._BuildTypeList = set()
+        self._ArchList = set()
         self._FamilyList = []
         self._TotalToolChainFamilySet = set()
         self._RuleObjectList = [] # FileBuildRule object list
@@ -456,8 +445,8 @@ class BuildRule:
     #
     def ParseSectionHeader(self, LineIndex):
         self._RuleInfo = tdict(True, 2)
-        self._BuildTypeList = []
-        self._ArchList = []
+        self._BuildTypeList = set()
+        self._ArchList = set()
         self._FamilyList = []
         self._TotalToolChainFamilySet = set()
         FileType = ''
@@ -478,7 +467,7 @@ class BuildRule:
                     EdkLogger.error("build", FORMAT_INVALID, "No file type given",
                                     File=self.RuleFile, Line=LineIndex + 1,
                                     ExtraData=self.RuleContent[LineIndex])
-                if self._FileTypePattern.match(FileType) == None:
+                if self._FileTypePattern.match(FileType) is None:
                     EdkLogger.error("build", FORMAT_INVALID, File=self.RuleFile, Line=LineIndex + 1,
                                     ExtraData="Only character, number (non-first character), '_' and '-' are allowed in file type")
             # new format: File-Type.Build-Type.Arch
@@ -494,10 +483,8 @@ class BuildRule:
                     BuildType = TokenList[1]
                 if len(TokenList) > 2:
                     Arch = TokenList[2]
-            if BuildType not in self._BuildTypeList:
-                self._BuildTypeList.append(BuildType)
-            if Arch not in self._ArchList:
-                self._ArchList.append(Arch)
+            self._BuildTypeList.add(BuildType)
+            self._ArchList.add(Arch)
 
         if 'COMMON' in self._BuildTypeList and len(self._BuildTypeList) > 1:
             EdkLogger.error("build", FORMAT_INVALID,
@@ -561,7 +548,7 @@ class BuildRule:
         FileList = [File.strip() for File in self.RuleContent[LineIndex].split(",")]
         for ToolChainFamily in self._FamilyList:
             InputFiles = self._RuleInfo[ToolChainFamily, self._State]
-            if InputFiles == None:
+            if InputFiles is None:
                 InputFiles = []
                 self._RuleInfo[ToolChainFamily, self._State] = InputFiles
             InputFiles.extend(FileList)
@@ -573,7 +560,7 @@ class BuildRule:
     def ParseCommon(self, LineIndex):
         for ToolChainFamily in self._FamilyList:
             Items = self._RuleInfo[ToolChainFamily, self._State]
-            if Items == None:
+            if Items is None:
                 Items = []
                 self._RuleInfo[ToolChainFamily, self._State] = Items
             Items.append(self.RuleContent[LineIndex])
