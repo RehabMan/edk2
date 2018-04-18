@@ -130,7 +130,7 @@ class GenFdsGlobalVariable:
     @staticmethod
     def GetBuildRules(Inf, Arch):
         if not Arch:
-            Arch = 'COMMON'
+            Arch = DataType.TAB_COMMON
 
         if not Arch in GenFdsGlobalVariable.OutputDirDict:
             return {}
@@ -217,7 +217,7 @@ class GenFdsGlobalVariable:
                     FileList.append((File, DataType.TAB_UNKNOWN_FILE))
 
         for File in Inf.Binaries:
-            if File.Target in ['COMMON', '*', GenFdsGlobalVariable.TargetName]:
+            if File.Target in [DataType.TAB_COMMON, '*', GenFdsGlobalVariable.TargetName]:
                 FileList.append((File, File.Type))
 
         for File, FileType in FileList:
@@ -549,7 +549,7 @@ class GenFdsGlobalVariable:
 
         GenFdsGlobalVariable.DebugLogger(EdkLogger.DEBUG_5, "%s needs update because of newer %s" % (Output, Input))
         if MakefilePath:
-            if (tuple(Cmd),tuple(GenFdsGlobalVariable.SecCmdList),tuple(GenFdsGlobalVariable.CopyList)) not in GenFdsGlobalVariable.FfsCmdDict.keys():
+            if (tuple(Cmd),tuple(GenFdsGlobalVariable.SecCmdList),tuple(GenFdsGlobalVariable.CopyList)) not in GenFdsGlobalVariable.FfsCmdDict:
                 GenFdsGlobalVariable.FfsCmdDict[tuple(Cmd), tuple(GenFdsGlobalVariable.SecCmdList), tuple(GenFdsGlobalVariable.CopyList)] = MakefilePath
             GenFdsGlobalVariable.SecCmdList = []
             GenFdsGlobalVariable.CopyList = []
@@ -759,7 +759,7 @@ class GenFdsGlobalVariable:
     #   @param  Str           String that may contain macro
     #   @param  MacroDict     Dictionary that contains macro value pair
     #
-    def MacroExtend (Str, MacroDict={}, Arch='COMMON'):
+    def MacroExtend (Str, MacroDict={}, Arch=DataType.TAB_COMMON):
         if Str is None :
             return None
 
@@ -771,7 +771,7 @@ class GenFdsGlobalVariable:
                 '$(SPACE)' : ' '
                }
         OutputDir = GenFdsGlobalVariable.OutputDirFromDscDict[GenFdsGlobalVariable.ArchList[0]]
-        if Arch != 'COMMON' and Arch in GenFdsGlobalVariable.ArchList:
+        if Arch != DataType.TAB_COMMON and Arch in GenFdsGlobalVariable.ArchList:
             OutputDir = GenFdsGlobalVariable.OutputDirFromDscDict[Arch]
 
         Dict['$(OUTPUT_DIRECTORY)'] = OutputDir
@@ -779,7 +779,7 @@ class GenFdsGlobalVariable:
         if MacroDict is not None  and len (MacroDict) != 0:
             Dict.update(MacroDict)
 
-        for key in Dict.keys():
+        for key in Dict:
             if Str.find(key) >= 0 :
                 Str = Str.replace (key, Dict[key])
 

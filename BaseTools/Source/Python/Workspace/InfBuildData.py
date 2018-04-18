@@ -107,7 +107,7 @@ class InfBuildData(ModuleBuildClassObject):
     #   @param      Platform        The name of platform employing this module
     #   @param      Macros          Macros used for replacement in DSC file
     #
-    def __init__(self, FilePath, RawData, BuildDatabase, Arch='COMMON', Target=None, Toolchain=None):
+    def __init__(self, FilePath, RawData, BuildDatabase, Arch=TAB_ARCH_COMMON, Target=None, Toolchain=None):
         self.MetaFile = FilePath
         self._ModuleDir = FilePath.Dir
         self._RawData = RawData
@@ -115,7 +115,7 @@ class InfBuildData(ModuleBuildClassObject):
         self._Arch = Arch
         self._Target = Target
         self._Toolchain = Toolchain
-        self._Platform = 'COMMON'
+        self._Platform = TAB_COMMON
         self._SourceOverridePath = None
         if FilePath.Key in GlobalData.gOverrideDir:
             self._SourceOverridePath = GlobalData.gOverrideDir[FilePath.Key]
@@ -602,7 +602,7 @@ class InfBuildData(ModuleBuildClassObject):
             for Record in RecordList:
                 FileType = Record[0]
                 LineNo = Record[-1]
-                Target = 'COMMON'
+                Target = TAB_COMMON
                 FeatureFlag = []
                 if Record[2]:
                     TokenList = GetSplitValueList(Record[2], TAB_VALUE_SPLIT)
@@ -788,10 +788,7 @@ class InfBuildData(ModuleBuildClassObject):
                 self._Includes.append(self._SourceOverridePath)
 
             Macros = self._Macros
-            if 'PROCESSOR' in GlobalData.gEdkGlobal.keys():
-                Macros['PROCESSOR'] = GlobalData.gEdkGlobal['PROCESSOR']
-            else:
-                Macros['PROCESSOR'] = self._Arch
+            Macros['PROCESSOR'] = GlobalData.gEdkGlobal.get('PROCESSOR', self._Arch)
             RecordList = self._RawData[MODEL_EFI_INCLUDE, self._Arch, self._Platform]
             for Record in RecordList:
                 if Record[0].find('EDK_SOURCE') > -1:
@@ -997,6 +994,7 @@ class InfBuildData(ModuleBuildClassObject):
             self._PcdComments[TokenSpaceGuid, PcdCName] = Comments
 
         # resolve PCD type, value, datum info, etc. by getting its definition from package
+        _GuidDict = self.Guids.copy()
         for PcdCName, TokenSpaceGuid in PcdList:
             PcdRealName = PcdCName
             Setting, LineNo = PcdDict[self._Arch, self.Platform, PcdCName, TokenSpaceGuid]
@@ -1050,7 +1048,7 @@ class InfBuildData(ModuleBuildClassObject):
                 #
                 #   "FixedAtBuild", "PatchableInModule", "FeatureFlag", "Dynamic", "DynamicEx"
                 #
-                self.Guids.update(Package.Guids)
+                _GuidDict.update(Package.Guids)
                 PcdType = self._PCD_TYPE_STRING_[Type]
                 if Type == MODEL_PCD_DYNAMIC:
                     Pcd.Pending = True
@@ -1142,7 +1140,7 @@ class InfBuildData(ModuleBuildClassObject):
                         Pcd.DefaultValue = PcdInPackage.DefaultValue
                     else:
                         try:
-                            Pcd.DefaultValue = ValueExpressionEx(Pcd.DefaultValue, Pcd.DatumType, self.Guids)(True)
+                            Pcd.DefaultValue = ValueExpressionEx(Pcd.DefaultValue, Pcd.DatumType, _GuidDict)(True)
                         except BadExpression, Value:
                             EdkLogger.error('Parser', FORMAT_INVALID, 'PCD [%s.%s] Value "%s", %s' %(TokenSpaceGuid, PcdRealName, Pcd.DefaultValue, Value),
                                             File=self.MetaFile, Line=LineNo)

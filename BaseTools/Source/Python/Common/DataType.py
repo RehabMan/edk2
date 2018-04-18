@@ -1,7 +1,7 @@
 ## @file
 # This file is used to define common static strings used by INF/DEC/DSC files
 #
-# Copyright (c) 2007 - 2017, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2007 - 2018, Intel Corporation. All rights reserved.<BR>
 # Portions copyright (c) 2011 - 2013, ARM Ltd. All rights reserved.<BR>
 # This program and the accompanying materials
 # are licensed and made available under the terms and conditions of the BSD License
@@ -76,7 +76,7 @@ SUP_MODULE_MM_CORE_STANDALONE = 'MM_CORE_STANDALONE'
 SUP_MODULE_LIST = [SUP_MODULE_BASE, SUP_MODULE_SEC, SUP_MODULE_PEI_CORE, SUP_MODULE_PEIM, SUP_MODULE_DXE_CORE, SUP_MODULE_DXE_DRIVER, \
                    SUP_MODULE_DXE_RUNTIME_DRIVER, SUP_MODULE_DXE_SAL_DRIVER, SUP_MODULE_DXE_SMM_DRIVER, SUP_MODULE_UEFI_DRIVER, \
                    SUP_MODULE_UEFI_APPLICATION, SUP_MODULE_USER_DEFINED, SUP_MODULE_SMM_CORE, SUP_MODULE_MM_STANDALONE, SUP_MODULE_MM_CORE_STANDALONE]
-SUP_MODULE_LIST_STRING = TAB_VALUE_SPLIT.join(l for l in SUP_MODULE_LIST)
+SUP_MODULE_LIST_STRING = TAB_VALUE_SPLIT.join(SUP_MODULE_LIST)
 
 EDK_COMPONENT_TYPE_LIBRARY = 'LIBRARY'
 EDK_COMPONENT_TYPE_SECUARITY_CORE = 'SECUARITY_CORE'
@@ -273,6 +273,11 @@ TAB_PCDS_PATCHABLE_LOAD_FIX_ADDRESS_LIST = [TAB_PCDS_PATCHABLE_LOAD_FIX_ADDRESS_
                                             TAB_PCDS_PATCHABLE_LOAD_FIX_ADDRESS_RUNTIME_PAGE_SIZE, \
                                             TAB_PCDS_PATCHABLE_LOAD_FIX_ADDRESS_SMM_PAGE_SIZE]
 
+## The mapping dictionary from datum type to its maximum number.
+MAX_VAL_TYPE = {"BOOLEAN":0x01, TAB_UINT8:0xFF, TAB_UINT16:0xFFFF, TAB_UINT32:0xFFFFFFFF, TAB_UINT64:0xFFFFFFFFFFFFFFFF}
+## The mapping dictionary from datum type to size string.
+MAX_SIZE_TYPE = {"BOOLEAN":"1", TAB_UINT8:"1", TAB_UINT16:"2", TAB_UINT32:"4", TAB_UINT64:"8"}
+
 TAB_DEPEX = 'Depex'
 TAB_DEPEX_COMMON = TAB_DEPEX + TAB_SPLIT + TAB_ARCH_COMMON
 TAB_DEPEX_IA32 = TAB_DEPEX + TAB_SPLIT + TAB_ARCH_IA32
@@ -312,6 +317,8 @@ TAB_DEFINE = 'DEFINE'
 TAB_NMAKE = 'Nmake'
 TAB_USER_EXTENSIONS = 'UserExtensions'
 TAB_INCLUDE = '!include'
+TAB_DEFAULT = 'DEFAULT'
+TAB_COMMON = 'COMMON'
 
 #
 # Common Define

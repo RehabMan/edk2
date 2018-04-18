@@ -47,13 +47,12 @@ import Common.GlobalData as GlobalData
 from DepexSection import DepexSection
 from Common.Misc import SaveFileOnChange
 from Common.Expression import *
+from Common.DataType import *
 
 ## generate FFS from INF
 #
 #
 class FfsInfStatement(FfsInfStatementClassObject):
-    ## The mapping dictionary from datum type to its maximum number.
-    _MAX_SIZE_TYPE = {"BOOLEAN":0x01, "UINT8":0xFF, "UINT16":0xFFFF, "UINT32":0xFFFFFFFF, "UINT64":0xFFFFFFFFFFFFFFFF}
     ## The constructor
     #
     #   @param  self        The object pointer
@@ -205,7 +204,7 @@ class FfsInfStatement(FfsInfStatementClassObject):
                 self.ShadowFromInfFile = Inf.Shadow
 
         else:
-            Inf = GenFdsGlobalVariable.WorkSpace.BuildObject[PathClassObj, 'COMMON', GenFdsGlobalVariable.TargetName, GenFdsGlobalVariable.ToolChainTag]
+            Inf = GenFdsGlobalVariable.WorkSpace.BuildObject[PathClassObj, TAB_COMMON, GenFdsGlobalVariable.TargetName, GenFdsGlobalVariable.ToolChainTag]
             self.BaseName = Inf.BaseName
             self.ModuleGuid = Inf.Guid
             self.ModuleType = Inf.ModuleType
@@ -332,8 +331,8 @@ class FfsInfStatement(FfsInfStatementClassObject):
                     EdkLogger.error("GenFds", GENFDS_ERROR, "The size of VOID* type PCD '%s.%s' exceeds its maximum size %d bytes." \
                                     % (Pcd.TokenSpaceGuidCName, Pcd.TokenCName, int(MaxDatumSize) - int(Pcd.MaxDatumSize)))
             else:
-                if PcdValueInDscOrFdf > FfsInfStatement._MAX_SIZE_TYPE[Pcd.DatumType] \
-                    or PcdValueInImg > FfsInfStatement._MAX_SIZE_TYPE[Pcd.DatumType]:
+                if PcdValueInDscOrFdf > MAX_VAL_TYPE[Pcd.DatumType] \
+                    or PcdValueInImg > MAX_VAL_TYPE[Pcd.DatumType]:
                     EdkLogger.error("GenFds", GENFDS_ERROR, "The size of %s type PCD '%s.%s' doesn't match its data type." \
                                     % (Pcd.DatumType, Pcd.TokenSpaceGuidCName, Pcd.TokenCName))
             self.PatchPcds.append((Pcd, DefaultValue))
@@ -570,7 +569,7 @@ class FfsInfStatement(FfsInfStatementClassObject):
 
         RuleName = 'RULE'      + \
                    '.'         + \
-                   'COMMON'    + \
+                   TAB_COMMON    + \
                    '.'         + \
                    self.ModuleType.upper()
 
@@ -612,7 +611,7 @@ class FfsInfStatement(FfsInfStatementClassObject):
                     # the file name FILE_GUIDmodule.inf, then PlatformDataBase.Modules use FILE_GUIDmodule.inf as key,
                     # but the path (self.MetaFile.Path) is the real path
                     #
-                    for key in PlatformDataBase.Modules.keys():
+                    for key in PlatformDataBase.Modules:
                         if InfFileKey == str((PlatformDataBase.Modules[key]).MetaFile.Path):
                             DscArchList.append (Arch)
                             break
@@ -1011,7 +1010,7 @@ class FfsInfStatement(FfsInfStatementClassObject):
                         if VfrUniOffsetList:
                             UniVfrOffsetFileName = os.path.join(self.OutputPath, self.BaseName + '.offset')
                             UniVfrOffsetFileSection = os.path.join(self.OutputPath, self.BaseName + 'Offset' + '.raw')
-                            self.__GenUniVfrOffsetFile (VfrUniOffsetList, UniVfrOffsetFileName)
+                            FfsInfStatement.__GenUniVfrOffsetFile (VfrUniOffsetList, UniVfrOffsetFileName)
                             UniVfrOffsetFileNameList = []
                             UniVfrOffsetFileNameList.append(UniVfrOffsetFileName)
                             """Call GenSection"""
@@ -1065,27 +1064,6 @@ class FfsInfStatement(FfsInfStatementClassObject):
                                              )
         return FfsOutput
 
-    ## __GetGenFfsCmdParameter__() method
-    #
-    #   Create parameter string for GenFfs
-    #
-    #   @param  self        The object pointer
-    #   @param  Rule        The rule object used to generate section
-    #   @retval tuple       (FileType, Fixed, CheckSum, Alignment)
-    #
-    def __GetGenFfsCmdParameter__(self, Rule):
-        result = tuple()
-        result += ('-t', Ffs.Ffs.FdfFvFileTypeToFileType[Rule.FvFileType])
-        if Rule.Fixed != False:
-            result += ('-x',)
-        if Rule.CheckSum != False:
-            result += ('-s',)
-
-        if Rule.Alignment is not None and Rule.Alignment != '':
-            result += ('-a', Rule.Alignment)
-
-        return result
- 
     ## __GetBuildOutputMapFileVfrUniInfo() method
     #
     #   Find the offset of UNI/INF object offset in the EFI image file.
@@ -1103,11 +1081,11 @@ class FfsInfStatement(FfsInfStatementClassObject):
     #
     #   Generate the offset file for the module which contain VFR or UNI file.
     #
-    #   @param  self                    The object pointer
     #   @param  VfrUniOffsetList        A list contain the VFR/UNI offsets in the EFI image file.
     #   @param  UniVfrOffsetFileName    The output offset file name.
     #
-    def __GenUniVfrOffsetFile(self, VfrUniOffsetList, UniVfrOffsetFileName):
+    @staticmethod
+    def __GenUniVfrOffsetFile(VfrUniOffsetList, UniVfrOffsetFileName):
 
         # Use a instance of StringIO to cache data
         fStringIO = StringIO.StringIO('')  
