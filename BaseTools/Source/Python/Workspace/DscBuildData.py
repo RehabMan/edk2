@@ -39,15 +39,9 @@ import Common.GlobalData as GlobalData
 import subprocess
 from Common.Misc import SaveFileOnChange
 from Workspace.BuildClassObject import PlatformBuildClassObject, StructurePcd, PcdClassObject, ModuleBuildClassObject
-from collections import OrderedDict
+from collections import OrderedDict,defaultdict
 
-#
-# Treat CHAR16 as a synonym for UINT16.  CHAR16 support is required for VFR C structs
-#
 PcdValueInitName = 'PcdValueInit'
-PcdSupportedBaseTypes = ['BOOLEAN', 'UINT8', 'UINT16', 'UINT32', 'UINT64', 'CHAR16']
-PcdSupportedBaseTypeWidth = {'BOOLEAN':8, 'UINT8':8, 'UINT16':16, 'UINT32':32, 'UINT64':64}
-PcdUnsupportedBaseTypes = ['INT8', 'INT16', 'INT32', 'INT64', 'CHAR8', 'UINTN', 'INTN', 'VOID']
 
 PcdMainCHeader = '''
 /**
@@ -94,6 +88,8 @@ PcdGccMakefile = '''
 MAKEROOT ?= $(EDK_TOOLS_PATH)/Source/C
 LIBS = -lCommon
 '''
+
+variablePattern = re.compile(r'[\t\s]*0[xX][a-fA-F0-9]+$')
 
 ## regular expressions for finding decimal and hex numbers
 Pattern = re.compile('^[1-9]\d*|0$')
@@ -1057,7 +1053,7 @@ class DscBuildData(PlatformBuildClassObject):
             TokenCName += '.' + FieldName
         if PcdValue.startswith('H'):
             if FieldName and IsFieldValueAnArray(PcdValue[1:]):
-                PcdDatumType = 'VOID*'
+                PcdDatumType = TAB_VOID
                 IsArray = True
             if FieldName and not IsArray:
                 return PcdValue
@@ -1068,7 +1064,7 @@ class DscBuildData(PlatformBuildClassObject):
                                 (TokenSpaceGuidCName, TokenCName, PcdValue, Value))
         elif PcdValue.startswith("L'") or PcdValue.startswith("'"):
             if FieldName and IsFieldValueAnArray(PcdValue):
-                PcdDatumType = 'VOID*'
+                PcdDatumType = TAB_VOID
                 IsArray = True
             if FieldName and not IsArray:
                 return PcdValue
@@ -1080,7 +1076,7 @@ class DscBuildData(PlatformBuildClassObject):
         elif PcdValue.startswith('L'):
             PcdValue = 'L"' + PcdValue[1:] + '"'
             if FieldName and IsFieldValueAnArray(PcdValue):
-                PcdDatumType = 'VOID*'
+                PcdDatumType = TAB_VOID
                 IsArray = True
             if FieldName and not IsArray:
                 return PcdValue
@@ -1095,7 +1091,7 @@ class DscBuildData(PlatformBuildClassObject):
             if PcdValue.upper() == 'TRUE':
                 PcdValue = str(1)
             if not FieldName:
-                if PcdDatumType not in ['UINT8','UINT16','UINT32','UINT64','BOOLEAN']:
+                if PcdDatumType not in TAB_PCD_NUMERIC_TYPES:
                     PcdValue = '"' + PcdValue + '"'
             else:
                 IsArray = False
@@ -1107,7 +1103,7 @@ class DscBuildData(PlatformBuildClassObject):
                 except:
                     PcdValue = '"' + PcdValue + '"'
                 if IsFieldValueAnArray(PcdValue):
-                    PcdDatumType = 'VOID*'
+                    PcdDatumType = TAB_VOID
                     IsArray = True
                 if not IsArray:
                     return PcdValue
@@ -1185,11 +1181,10 @@ class DscBuildData(PlatformBuildClassObject):
                             options[Key] += ' ' + Option
         return self._ModuleTypeOptions[Edk, ModuleType]
 
-    def GetStructurePcdInfo(self, PcdSet):
-        structure_pcd_data = {}
+    @staticmethod
+    def GetStructurePcdInfo(PcdSet):
+        structure_pcd_data = defaultdict(list)
         for item in PcdSet:
-            if (item[0],item[1]) not in structure_pcd_data:
-                structure_pcd_data[(item[0],item[1])] = []
             structure_pcd_data[(item[0],item[1])].append(item)
 
         return structure_pcd_data
@@ -1200,7 +1195,7 @@ class DscBuildData(PlatformBuildClassObject):
         for item in GlobalData.BuildOptionPcd:
             if len(item) == 5 and (item[1],item[0]) in StruPcds:
                 StructurePcdInCom[(item[0],item[1],item[2] )] = (item[3],item[4])
-        GlobalPcds = set([(item[0],item[1]) for item in StructurePcdInCom.keys()])
+        GlobalPcds = {(item[0],item[1]) for item in StructurePcdInCom}
         for Pcd in StruPcds.values():
             if (Pcd.TokenSpaceGuidCName,Pcd.TokenCName) not in GlobalPcds:
                 continue
@@ -1246,7 +1241,7 @@ class DscBuildData(PlatformBuildClassObject):
                             for defaultstore in SkuInfo.DefaultStoreDict:
                                 SkuInfo.DefaultStoreDict[defaultstore] = NoFiledValues[(Pcd.TokenSpaceGuidCName,Pcd.TokenCName)][0]
                     if Pcd.Type in [self._PCD_TYPE_STRING_[MODEL_PCD_DYNAMIC_EX_HII], self._PCD_TYPE_STRING_[MODEL_PCD_DYNAMIC_HII]]:
-                        if Pcd.DatumType == "VOID*":
+                        if Pcd.DatumType == TAB_VOID:
                             if not Pcd.MaxDatumSize:
                                 Pcd.MaxDatumSize = '0'
                             CurrentSize = int(Pcd.MaxDatumSize,16) if Pcd.MaxDatumSize.upper().startswith("0X") else int(Pcd.MaxDatumSize)
@@ -1276,7 +1271,7 @@ class DscBuildData(PlatformBuildClassObject):
         DefaultStoreMgr = DefaultStore(self.DefaultStores)
         SkuIds = self.SkuIdMgr.AvailableSkuIdSet
         SkuIds.update({TAB_DEFAULT:0})
-        DefaultStores = set([storename for pcdobj in AllPcds.values() for skuobj in pcdobj.SkuInfoList.values() for storename in skuobj.DefaultStoreDict.keys()])
+        DefaultStores = {storename for pcdobj in AllPcds.values() for skuobj in pcdobj.SkuInfoList.values() for storename in skuobj.DefaultStoreDict}
 
         S_PcdSet = []
         # Find out all possible PCD candidates for self._Arch
@@ -1296,7 +1291,7 @@ class DscBuildData(PlatformBuildClassObject):
                 S_PcdSet.append([ TokenSpaceGuid.split(".")[0],TokenSpaceGuid.split(".")[1], PcdCName,SkuName, default_store,Dummy5, AnalyzePcdExpression(Setting)[0]])
 
         # handle pcd value override
-        StrPcdSet = self.GetStructurePcdInfo(S_PcdSet)
+        StrPcdSet = DscBuildData.GetStructurePcdInfo(S_PcdSet)
         S_pcd_set = OrderedDict()
         for str_pcd in StrPcdSet:
             str_pcd_obj = Pcds.get((str_pcd[1], str_pcd[0]), None)
@@ -1568,7 +1563,7 @@ class DscBuildData(PlatformBuildClassObject):
                 IsArray = IsFieldValueAnArray(FieldList[FieldName.strip(".")][0])
                 if IsArray and not (FieldList[FieldName.strip(".")][0].startswith('{GUID') and FieldList[FieldName.strip(".")][0].endswith('}')):
                     try:
-                        Value = ValueExpressionEx(FieldList[FieldName.strip(".")][0], "VOID*", self._GuidDict)(True)
+                        Value = ValueExpressionEx(FieldList[FieldName.strip(".")][0], TAB_VOID, self._GuidDict)(True)
                     except BadExpression:
                         EdkLogger.error('Build', FORMAT_INVALID, "Invalid value format for %s. From %s Line %d " %
                                         (".".join((Pcd.TokenSpaceGuidCName, Pcd.TokenCName, FieldName.strip('.'))), FieldList[FieldName.strip(".")][1], FieldList[FieldName.strip(".")][2]))
@@ -1598,7 +1593,7 @@ class DscBuildData(PlatformBuildClassObject):
                         IsArray = IsFieldValueAnArray(FieldList[FieldName.strip(".")][0])
                         if IsArray and not (FieldList[FieldName.strip(".")][0].startswith('{GUID') and FieldList[FieldName.strip(".")][0].endswith('}')):
                             try:
-                                Value = ValueExpressionEx(FieldList[FieldName.strip(".")][0], "VOID*", self._GuidDict)(True)
+                                Value = ValueExpressionEx(FieldList[FieldName.strip(".")][0], TAB_VOID, self._GuidDict)(True)
                             except BadExpression:
                                 EdkLogger.error('Build', FORMAT_INVALID, "Invalid value format for %s. From %s Line %d " %
                                                 (".".join((Pcd.TokenSpaceGuidCName, Pcd.TokenCName, FieldName.strip('.'))), FieldList[FieldName.strip(".")][1], FieldList[FieldName.strip(".")][2]))
@@ -1622,7 +1617,7 @@ class DscBuildData(PlatformBuildClassObject):
             IsArray = IsFieldValueAnArray(Pcd.PcdFieldValueFromComm[FieldName.strip(".")][0])
             if IsArray and not (Pcd.PcdFieldValueFromComm[FieldName.strip(".")][0].startswith('{GUID') and Pcd.PcdFieldValueFromComm[FieldName.strip(".")][0].endswith('}')):
                 try:
-                    Value = ValueExpressionEx(Pcd.PcdFieldValueFromComm[FieldName.strip(".")][0], "VOID*", self._GuidDict)(True)
+                    Value = ValueExpressionEx(Pcd.PcdFieldValueFromComm[FieldName.strip(".")][0], TAB_VOID, self._GuidDict)(True)
                 except BadExpression:
                     EdkLogger.error('Build', FORMAT_INVALID, "Invalid value format for %s. From %s Line %d " %
                                     (".".join((Pcd.TokenSpaceGuidCName, Pcd.TokenCName, FieldName.strip('.'))), Pcd.PcdFieldValueFromComm[FieldName.strip(".")][1], Pcd.PcdFieldValueFromComm[FieldName.strip(".")][2]))
@@ -1658,7 +1653,7 @@ class DscBuildData(PlatformBuildClassObject):
         IsArray = IsFieldValueAnArray(Pcd.DefaultValueFromDec)
         if IsArray:
             try:
-                DefaultValueFromDec = ValueExpressionEx(Pcd.DefaultValueFromDec, "VOID*")(True)
+                DefaultValueFromDec = ValueExpressionEx(Pcd.DefaultValueFromDec, TAB_VOID)(True)
             except BadExpression:
                 EdkLogger.error("Build", FORMAT_INVALID, "Invalid value format for %s.%s, from DEC: %s" %
                                 (Pcd.TokenSpaceGuidCName, Pcd.TokenCName, DefaultValueFromDec))
@@ -1679,7 +1674,7 @@ class DscBuildData(PlatformBuildClassObject):
                 IsArray = IsFieldValueAnArray(FieldList[FieldName][0])
                 if IsArray:
                     try:
-                        FieldList[FieldName][0] = ValueExpressionEx(FieldList[FieldName][0], "VOID*", self._GuidDict)(True)
+                        FieldList[FieldName][0] = ValueExpressionEx(FieldList[FieldName][0], TAB_VOID, self._GuidDict)(True)
                     except BadExpression:
                         EdkLogger.error('Build', FORMAT_INVALID, "Invalid value format for %s. From %s Line %d " %
                                         (".".join((Pcd.TokenSpaceGuidCName, Pcd.TokenCName, FieldName)), FieldList[FieldName][1],FieldList[FieldName][2]))
@@ -1732,7 +1727,7 @@ class DscBuildData(PlatformBuildClassObject):
                 IsArray = IsFieldValueAnArray(FieldList)
                 if IsArray:
                     try:
-                        FieldList = ValueExpressionEx(FieldList, "VOID*")(True)
+                        FieldList = ValueExpressionEx(FieldList, TAB_VOID)(True)
                     except BadExpression:
                         EdkLogger.error("Build", FORMAT_INVALID, "Invalid value format for %s.%s, from DSC: %s" %
                                         (Pcd.TokenSpaceGuidCName, Pcd.TokenCName, FieldList))
@@ -1762,7 +1757,7 @@ class DscBuildData(PlatformBuildClassObject):
                     IsArray = IsFieldValueAnArray(FieldList[FieldName][0])
                     if IsArray:
                         try:
-                            FieldList[FieldName][0] = ValueExpressionEx(FieldList[FieldName][0], "VOID*", self._GuidDict)(True)
+                            FieldList[FieldName][0] = ValueExpressionEx(FieldList[FieldName][0], TAB_VOID, self._GuidDict)(True)
                         except BadExpression:
                             EdkLogger.error('Build', FORMAT_INVALID, "Invalid value format for %s. From %s Line %d " %
                                             (".".join((Pcd.TokenSpaceGuidCName, Pcd.TokenCName, FieldName)), FieldList[FieldName][1], FieldList[FieldName][2]))
@@ -1806,7 +1801,7 @@ class DscBuildData(PlatformBuildClassObject):
                 IsArray = IsFieldValueAnArray(FieldList)
                 if IsArray:
                     try:
-                        FieldList = ValueExpressionEx(FieldList, "VOID*")(True)
+                        FieldList = ValueExpressionEx(FieldList, TAB_VOID)(True)
                     except BadExpression:
                         EdkLogger.error("Build", FORMAT_INVALID, "Invalid value format for %s.%s, from Command: %s" %
                                         (Pcd.TokenSpaceGuidCName, Pcd.TokenCName, FieldList))
@@ -1825,7 +1820,7 @@ class DscBuildData(PlatformBuildClassObject):
                 IsArray = IsFieldValueAnArray(FieldList[FieldName][0])
                 if IsArray:
                     try:
-                        FieldList[FieldName][0] = ValueExpressionEx(FieldList[FieldName][0], "VOID*", self._GuidDict)(True)
+                        FieldList[FieldName][0] = ValueExpressionEx(FieldList[FieldName][0], TAB_VOID, self._GuidDict)(True)
                     except BadExpression:
                         EdkLogger.error('Build', FORMAT_INVALID, "Invalid value format for %s. From %s Line %d " %
                                         (".".join((Pcd.TokenSpaceGuidCName, Pcd.TokenCName, FieldName)), FieldList[FieldName][1], FieldList[FieldName][2]))
@@ -1952,13 +1947,11 @@ class DscBuildData(PlatformBuildClassObject):
         InitByteValue = ""
         CApp = PcdMainCHeader
 
-        Includes = {}
         IncludeFiles = set()
         for PcdName in StructuredPcds:
             Pcd = StructuredPcds[PcdName]
             for IncludeFile in Pcd.StructuredPcdIncludeFile:
-                if IncludeFile not in Includes:
-                    Includes[IncludeFile] = True
+                if IncludeFile not in IncludeFiles:
                     IncludeFiles.add(IncludeFile)
                     CApp = CApp + '#include <%s>\n' % (IncludeFile)
         CApp = CApp + '\n'
@@ -2332,7 +2325,7 @@ class DscBuildData(PlatformBuildClassObject):
         Pcds = {}
         DefaultStoreObj = DefaultStore(self._GetDefaultStores())
         SkuIds = {skuname:skuid for skuname,skuid in self.SkuIdMgr.AvailableSkuIdSet.items() if skuname != TAB_COMMON}
-        DefaultStores = set([storename for pcdobj in PcdSet.values() for skuobj in pcdobj.SkuInfoList.values() for storename in skuobj.DefaultStoreDict.keys()])
+        DefaultStores = set([storename for pcdobj in PcdSet.values() for skuobj in pcdobj.SkuInfoList.values() for storename in skuobj.DefaultStoreDict])
         for PcdCName, TokenSpaceGuid in PcdSet:
             PcdObj = PcdSet[(PcdCName, TokenSpaceGuid)]
             self.CopyDscRawValue(PcdObj)
@@ -2421,7 +2414,7 @@ class DscBuildData(PlatformBuildClassObject):
             if VariableOffset.isdigit():
                 if int(VariableOffset, 10) > 0xFFFF:
                     ExceedMax = True
-            elif re.match(r'[\t\s]*0[xX][a-fA-F0-9]+$', VariableOffset):
+            elif variablePattern.match(VariableOffset):
                 if int(VariableOffset, 16) > 0xFFFF:
                     ExceedMax = True
             # For Offset written in "A.B"
@@ -2497,7 +2490,7 @@ class DscBuildData(PlatformBuildClassObject):
                 MaxSize = int(pcd.MaxDatumSize, 0)
             else:
                 MaxSize = 0
-            if pcd.DatumType not in ['BOOLEAN','UINT8','UINT16','UINT32','UINT64']:
+            if pcd.DatumType not in TAB_PCD_NUMERIC_TYPES:
                 for (_, skuobj) in pcd.SkuInfoList.items():
                     datalen = 0
                     skuobj.HiiDefaultValue = StringToArray(skuobj.HiiDefaultValue)

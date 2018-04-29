@@ -42,6 +42,13 @@ import subprocess
 ## Regular expression used to find out place holders in string template
 gPlaceholderPattern = re.compile("\$\{([^$()\s]+)\}", re.MULTILINE | re.UNICODE)
 
+## regular expressions for map file processing
+startPatternGeneral = re.compile("^Start[' ']+Length[' ']+Name[' ']+Class")
+addressPatternGeneral = re.compile("^Address[' ']+Publics by Value[' ']+Rva\+Base")
+valuePatternGcc = re.compile('^([\w_\.]+) +([\da-fA-Fx]+) +([\da-fA-Fx]+)$')
+pcdPatternGcc = re.compile('^([\da-fA-Fx]+) +([\da-fA-Fx]+)')
+secReGeneral = re.compile('^([\da-fA-F]+):([\da-fA-F]+) +([\da-fA-F]+)[Hh]? +([.\w\$]+) +(\w+)', re.UNICODE)
+
 ## Dictionary used to store file time stamp for quick re-access
 gFileTimeStampCache = {}    # {file path : file time stamp}
 
@@ -84,6 +91,7 @@ def _parseForXcode(lines, efifilepath, varnames):
         if status == 1 and len(line) != 0:
             for varname in varnames:
                 if varname in line:
+                    # cannot pregenerate this RegEx since it uses varname from varnames.
                     m = re.match('^([\da-fA-FxX]+)([\s\S]*)([_]*%s)$' % varname, line)
                     if m is not None:
                         ret.append((varname, m.group(1)))
@@ -109,7 +117,7 @@ def _parseForGCC(lines, efifilepath, varnames):
 
         # status handler
         if status == 3:
-            m = re.match('^([\w_\.]+) +([\da-fA-Fx]+) +([\da-fA-Fx]+)$', line)
+            m = valuePatternGcc.match(line)
             if m is not None:
                 sections.append(m.groups(0))
             for varname in varnames:
@@ -122,7 +130,7 @@ def _parseForGCC(lines, efifilepath, varnames):
                     else:
                         Str = line[len(".data.%s" % varname):]
                     if Str:
-                        m = re.match('^([\da-fA-Fx]+) +([\da-fA-Fx]+)', Str.strip())
+                        m = pcdPatternGcc.match(Str.strip())
                         if m is not None:
                             varoffset.append((varname, int(m.groups(0)[0], 16) , int(sections[-1][1], 16), sections[-1][0]))
 
@@ -150,22 +158,21 @@ def _parseGeneral(lines, efifilepath, varnames):
     status = 0    #0 - beginning of file; 1 - PE section definition; 2 - symbol table
     secs  = []    # key = section name
     varoffset = []
-    secRe = re.compile('^([\da-fA-F]+):([\da-fA-F]+) +([\da-fA-F]+)[Hh]? +([.\w\$]+) +(\w+)', re.UNICODE)
     symRe = re.compile('^([\da-fA-F]+):([\da-fA-F]+) +([\.:\\\\\w\?@\$]+) +([\da-fA-F]+)', re.UNICODE)
 
     for line in lines:
         line = line.strip()
-        if re.match("^Start[' ']+Length[' ']+Name[' ']+Class", line):
+        if startPatternGeneral.match(line):
             status = 1
             continue
-        if re.match("^Address[' ']+Publics by Value[' ']+Rva\+Base", line):
+        if addressPatternGeneral.match(line):
             status = 2
             continue
-        if re.match("^entry point at", line):
+        if line.startswith("entry point at"):
             status = 3
             continue        
         if status == 1 and len(line) != 0:
-            m =  secRe.match(line)
+            m =  secReGeneral.match(line)
             assert m is not None, "Fail to parse the section in map file , line is %s" % line
             sec_no, sec_start, sec_length, sec_name, sec_class = m.groups(0)
             secs.append([int(sec_no, 16), int(sec_start, 16), int(sec_length, 16), sec_name, sec_class])
@@ -177,6 +184,7 @@ def _parseGeneral(lines, efifilepath, varnames):
                 sec_no     = int(sec_no,     16)
                 sym_offset = int(sym_offset, 16)
                 vir_addr   = int(vir_addr,   16)
+                # cannot pregenerate this RegEx since it uses varname from varnames.
                 m2 = re.match('^[_]*(%s)' % varname, sym_name)
                 if m2 is not None:
                     # fond a binary pcd entry in map file
@@ -1288,22 +1296,22 @@ def ParseFieldValue (Value):
     if type(Value) <> type(''):
         raise BadExpression('Type %s is %s' %(Value, type(Value)))
     Value = Value.strip()
-    if Value.startswith('UINT8') and Value.endswith(')'):
+    if Value.startswith(TAB_UINT8) and Value.endswith(')'):
         Value, Size = ParseFieldValue(Value.split('(', 1)[1][:-1])
         if Size > 1:
             raise BadExpression('Value (%s) Size larger than %d' %(Value, Size))
         return Value, 1
-    if Value.startswith('UINT16') and Value.endswith(')'):
+    if Value.startswith(TAB_UINT16) and Value.endswith(')'):
         Value, Size = ParseFieldValue(Value.split('(', 1)[1][:-1])
         if Size > 2:
             raise BadExpression('Value (%s) Size larger than %d' %(Value, Size))
         return Value, 2
-    if Value.startswith('UINT32') and Value.endswith(')'):
+    if Value.startswith(TAB_UINT32) and Value.endswith(')'):
         Value, Size = ParseFieldValue(Value.split('(', 1)[1][:-1])
         if Size > 4:
             raise BadExpression('Value (%s) Size larger than %d' %(Value, Size))
         return Value, 4
-    if Value.startswith('UINT64') and Value.endswith(')'):
+    if Value.startswith(TAB_UINT64) and Value.endswith(')'):
         Value, Size = ParseFieldValue(Value.split('(', 1)[1][:-1])
         if Size > 8:
             raise BadExpression('Value (%s) Size larger than %d' % (Value, Size))
@@ -1490,7 +1498,7 @@ def AnalyzeDscPcd(Setting, PcdType, DataType=''):
     elif PcdType in (MODEL_PCD_DYNAMIC_VPD, MODEL_PCD_DYNAMIC_EX_VPD):
         VpdOffset = FieldList[0]
         Value = Size = ''
-        if not DataType == 'VOID*':
+        if not DataType == TAB_VOID:
             if len(FieldList) > 1:
                 Value = FieldList[1]
         else:
@@ -1558,7 +1566,7 @@ def AnalyzePcdData(Setting):
 # For PCD value setting
 #
 def CheckPcdDatum(Type, Value):
-    if Type == "VOID*":
+    if Type == TAB_VOID:
         ValueRe = re.compile(r'\s*L?\".*\"\s*$')
         if not (((Value.startswith('L"') or Value.startswith('"')) and Value.endswith('"'))
                 or (Value.startswith('{') and Value.endswith('}')) or (Value.startswith("L'") or Value.startswith("'") and Value.endswith("'"))

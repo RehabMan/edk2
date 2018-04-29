@@ -91,14 +91,14 @@ class VariableMgr(object):
             for item in sku_var_info_offset_list:
                 data_type = item.data_type
                 value_list = item.default_value.strip("{").strip("}").split(",")
-                if data_type in ["BOOLEAN","UINT8","UINT16","UINT32","UINT64"]:
-                    if data_type == ["BOOLEAN","UINT8"]:
+                if data_type in DataType.TAB_PCD_NUMERIC_TYPES:
+                    if data_type == ["BOOLEAN", DataType.TAB_UINT8]:
                         data_flag = "=B"
-                    elif data_type == "UINT16":
+                    elif data_type == DataType.TAB_UINT16:
                         data_flag = "=H"
-                    elif data_type == "UINT32":
+                    elif data_type == DataType.TAB_UINT32:
                         data_flag = "=L"
-                    elif data_type == "UINT64":
+                    elif data_type == DataType.TAB_UINT64:
                         data_flag = "=Q"
                     data = value_list[0]
                     value_list = []
@@ -110,7 +110,7 @@ class VariableMgr(object):
             except:
                 EdkLogger.error("build", AUTOGEN_ERROR, "Variable offset conflict in PCDs: %s \n" % (" and ".join([item.pcdname for item in sku_var_info_offset_list])))
             n = sku_var_info_offset_list[0]
-            indexedvarinfo[key] =  [var_info(n.pcdindex,n.pcdname,n.defaultstoragename,n.skuname,n.var_name, n.var_guid, "0x00",n.var_attribute,newvaluestr  , newvaluestr , "VOID*")]
+            indexedvarinfo[key] =  [var_info(n.pcdindex,n.pcdname,n.defaultstoragename,n.skuname,n.var_name, n.var_guid, "0x00",n.var_attribute,newvaluestr  , newvaluestr , DataType.TAB_VOID)]
         self.VarInfo = [item[0] for item in indexedvarinfo.values()]
 
     def assemble_variable(self, valuelist):
@@ -128,7 +128,7 @@ class VariableMgr(object):
         return var_value
     def process_variable_data(self):
 
-        var_data = dict()
+        var_data = collections.defaultdict(collections.OrderedDict)
 
         indexedvarinfo = collections.OrderedDict()
         for item in self.VarInfo:
@@ -144,7 +144,7 @@ class VariableMgr(object):
             tail = None
             default_sku_default = indexedvarinfo.get(index).get((DataType.TAB_DEFAULT,DataType.TAB_DEFAULT_STORES_DEFAULT))
 
-            if default_sku_default.data_type not in ["UINT8","UINT16","UINT32","UINT64","BOOLEAN"]:
+            if default_sku_default.data_type not in DataType.TAB_PCD_NUMERIC_TYPES:
                 var_max_len = max([len(var_item.default_value.split(",")) for var_item in sku_var_info.values()])
                 if len(default_sku_default.default_value.split(",")) < var_max_len:
                     tail = ",".join([ "0x00" for i in range(var_max_len-len(default_sku_default.default_value.split(",")))])
@@ -155,8 +155,6 @@ class VariableMgr(object):
             for item in default_data_buffer:
                 default_data_array += unpack("B",item)
 
-            if (DataType.TAB_DEFAULT,DataType.TAB_DEFAULT_STORES_DEFAULT) not in var_data:
-                var_data[(DataType.TAB_DEFAULT,DataType.TAB_DEFAULT_STORES_DEFAULT)] = collections.OrderedDict()
             var_data[(DataType.TAB_DEFAULT,DataType.TAB_DEFAULT_STORES_DEFAULT)][index] = (default_data_buffer,sku_var_info[(DataType.TAB_DEFAULT,DataType.TAB_DEFAULT_STORES_DEFAULT)])
 
             for (skuid,defaultstoragename) in indexedvarinfo.get(index):
@@ -165,7 +163,7 @@ class VariableMgr(object):
                     continue
                 other_sku_other = indexedvarinfo.get(index).get((skuid,defaultstoragename))
 
-                if default_sku_default.data_type not in ["UINT8","UINT16","UINT32","UINT64","BOOLEAN"]:
+                if default_sku_default.data_type not in DataType.TAB_PCD_NUMERIC_TYPES:
                     if len(other_sku_other.default_value.split(",")) < var_max_len:
                         tail = ",".join([ "0x00" for i in range(var_max_len-len(other_sku_other.default_value.split(",")))])
 
@@ -177,8 +175,6 @@ class VariableMgr(object):
 
                 data_delta = self.calculate_delta(default_data_array, others_data_array)
 
-                if (skuid,defaultstoragename) not in var_data:
-                    var_data[(skuid,defaultstoragename)] = collections.OrderedDict()
                 var_data[(skuid,defaultstoragename)][index] = (data_delta,sku_var_info[(skuid,defaultstoragename)])
         return var_data
 
@@ -314,7 +310,7 @@ class VariableMgr(object):
     def PACK_VARIABLES_DATA(self, var_value,data_type, tail = None):
         Buffer = ""
         data_len = 0
-        if data_type == "VOID*":
+        if data_type == DataType.TAB_VOID:
             for value_char in var_value.strip("{").strip("}").split(","):
                 Buffer += pack("=B",int(value_char,16))
             data_len += len(var_value.split(","))
@@ -325,16 +321,16 @@ class VariableMgr(object):
         elif data_type == "BOOLEAN":
             Buffer += pack("=B",True) if var_value.upper() == "TRUE" else pack("=B",False)
             data_len += 1
-        elif data_type  == "UINT8":
+        elif data_type  == DataType.TAB_UINT8:
             Buffer += pack("=B",GetIntegerValue(var_value))
             data_len += 1
-        elif data_type == "UINT16":
+        elif data_type == DataType.TAB_UINT16:
             Buffer += pack("=H",GetIntegerValue(var_value))
             data_len += 2
-        elif data_type == "UINT32":
+        elif data_type == DataType.TAB_UINT32:
             Buffer += pack("=L",GetIntegerValue(var_value))
             data_len += 4
-        elif data_type == "UINT64":
+        elif data_type == DataType.TAB_UINT64:
             Buffer += pack("=Q",GetIntegerValue(var_value))
             data_len += 8
 

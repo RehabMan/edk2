@@ -1134,7 +1134,7 @@ class FdfParser:
 
     @staticmethod
     def __Verify(Name, Value, Scope):
-        if Scope in ['UINT64', 'UINT8']:
+        if Scope in [TAB_UINT64, TAB_UINT8]:
             ValueNumber = 0
             try:
                 ValueNumber = int (Value, 0)
@@ -1142,10 +1142,10 @@ class FdfParser:
                 EdkLogger.error("FdfParser", FORMAT_INVALID, "The value is not valid dec or hex number for %s." % Name)
             if ValueNumber < 0:
                 EdkLogger.error("FdfParser", FORMAT_INVALID, "The value can't be set to negative value for %s." % Name)
-            if Scope == 'UINT64':
+            if Scope == TAB_UINT64:
                 if ValueNumber >= 0x10000000000000000:
                     EdkLogger.error("FdfParser", FORMAT_INVALID, "Too large value for %s." % Name)
-            if Scope == 'UINT8':
+            if Scope == TAB_UINT8:
                 if ValueNumber >= 0x100:
                     EdkLogger.error("FdfParser", FORMAT_INVALID, "Too large value for %s." % Name)
             return True
@@ -1183,13 +1183,6 @@ class FdfParser:
 
         self.__GetOneChar()
 
-    def __IsHex(self, HexStr):
-        if not HexStr.upper().startswith("0X"):
-            return False
-        if len(self.__Token) <= 2:
-            return False
-        return True if all(x in string.hexdigits for x in HexStr[2:]) else False
-
     ## __GetNextHexNumber() method
     #
     #   Get next HEX data before a seperator
@@ -1202,7 +1195,7 @@ class FdfParser:
     def __GetNextHexNumber(self):
         if not self.__GetNextToken():
             return False
-        if self.__IsHex(self.__Token):
+        if gHexPatternAll.match(self.__Token):
             return True
         else:
             self.__UndoToken()

@@ -316,7 +316,7 @@ class FV (FvClassObject):
                                           ' %s' %ErasePloarity    + \
                                           T_CHAR_LF)
         if not (self.FvAttributeDict is None):
-            for FvAttribute in self.FvAttributeDict:
+            for FvAttribute in self.FvAttributeDict.keys() :
                 if FvAttribute == "FvUsedSizeEnable":
                     if self.FvAttributeDict[FvAttribute].upper() in ('TRUE', '1') :
                         self.UsedSizeEnable = True
@@ -439,7 +439,7 @@ class FV (FvClassObject):
         # Add [Files]
         #
         self.FvInfFile.writelines("[files]" + T_CHAR_LF)
-        if VtfDict is not None and self.UiFvName in VtfDict:
+        if VtfDict and self.UiFvName in VtfDict:
             self.FvInfFile.writelines("EFI_FILE_NAME = "                   + \
                                        VtfDict[self.UiFvName]              + \
                                        T_CHAR_LF)

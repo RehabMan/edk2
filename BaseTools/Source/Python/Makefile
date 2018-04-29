@@ -37,7 +37,6 @@ APPLICATIONS=$(BIN_DIR)\build.exe $(BIN_DIR)\GenFds.exe $(BIN_DIR)\Trim.exe $(BI
 COMMON_PYTHON=$(BASE_TOOLS_PATH)\Source\Python\Common\BuildToolError.py \
               $(BASE_TOOLS_PATH)\Source\Python\Common\Database.py \
               $(BASE_TOOLS_PATH)\Source\Python\Common\DataType.py \
-              $(BASE_TOOLS_PATH)\Source\Python\Common\EdkIIWorkspace.py \
               $(BASE_TOOLS_PATH)\Source\Python\Common\EdkLogger.py \
               $(BASE_TOOLS_PATH)\Source\Python\Common\Expression.py \
               $(BASE_TOOLS_PATH)\Source\Python\Common\GlobalData.py \
@@ -58,7 +57,6 @@ COMMON_PYTHON=$(BASE_TOOLS_PATH)\Source\Python\Common\BuildToolError.py \
               $(BASE_TOOLS_PATH)\Source\Python\CommonDataClass\DataClass.py \
               $(BASE_TOOLS_PATH)\Source\Python\CommonDataClass\Exceptions.py \
               $(BASE_TOOLS_PATH)\Source\Python\CommonDataClass\FdfClass.py \
-              $(BASE_TOOLS_PATH)\Source\Python\CommonDataClass\PlatformClass.py \
               $(BASE_TOOLS_PATH)\Source\Python\Table\Table.py \
               $(BASE_TOOLS_PATH)\Source\Python\Table\TableDataModel.py \
               $(BASE_TOOLS_PATH)\Source\Python\Table\TableDec.py \
