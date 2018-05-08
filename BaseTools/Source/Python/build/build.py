@@ -377,7 +377,8 @@ class BuildUnit:
     #   @param  Other       The other BuildUnit object compared to
     #
     def __eq__(self, Other):
-        return Other is not None and self.BuildObject == Other.BuildObject \
+        return Other and self.BuildObject == Other.BuildObject \
+                and Other.BuildObject \
                 and self.BuildObject.Arch == Other.BuildObject.Arch
 
     ## hash() method
@@ -544,7 +545,7 @@ class BuildTask:
             # while not BuildTask._ErrorFlag.isSet() and \
             while len(BuildTask._RunningQueue) > 0:
                 EdkLogger.verbose("Waiting for thread ending...(%d)" % len(BuildTask._RunningQueue))
-                EdkLogger.debug(EdkLogger.DEBUG_8, "Threads [%s]" % ", ".join([Th.getName() for Th in threading.enumerate()]))
+                EdkLogger.debug(EdkLogger.DEBUG_8, "Threads [%s]" % ", ".join(Th.getName() for Th in threading.enumerate()))
                 # avoid tense loop
                 time.sleep(0.1)
         except BaseException, X:
@@ -1587,22 +1588,22 @@ class Build():
                     if not ImageClass.IsValid:
                         EdkLogger.error("build", FILE_PARSE_FAILURE, ExtraData=ImageClass.ErrorInfo)
                     ImageInfo = PeImageInfo(Module.Name, Module.Guid, Module.Arch, Module.OutputDir, Module.DebugDir, ImageClass)
-                    if Module.ModuleType in ['PEI_CORE', 'PEIM', 'COMBINED_PEIM_DRIVER', 'PIC_PEIM', 'RELOCATABLE_PEIM', 'DXE_CORE']:
+                    if Module.ModuleType in [SUP_MODULE_PEI_CORE, SUP_MODULE_PEIM, EDK_COMPONENT_TYPE_COMBINED_PEIM_DRIVER, EDK_COMPONENT_TYPE_PIC_PEIM, EDK_COMPONENT_TYPE_RELOCATABLE_PEIM, SUP_MODULE_DXE_CORE]:
                         PeiModuleList[Module.MetaFile] = ImageInfo
                         PeiSize += ImageInfo.Image.Size
-                    elif Module.ModuleType in ['BS_DRIVER', 'DXE_DRIVER', 'UEFI_DRIVER']:
+                    elif Module.ModuleType in [EDK_COMPONENT_TYPE_BS_DRIVER, SUP_MODULE_DXE_DRIVER, SUP_MODULE_UEFI_DRIVER]:
                         BtModuleList[Module.MetaFile] = ImageInfo
                         BtSize += ImageInfo.Image.Size
-                    elif Module.ModuleType in ['DXE_RUNTIME_DRIVER', 'RT_DRIVER', 'DXE_SAL_DRIVER', 'SAL_RT_DRIVER']:
+                    elif Module.ModuleType in [SUP_MODULE_DXE_RUNTIME_DRIVER, EDK_COMPONENT_TYPE_RT_DRIVER, SUP_MODULE_DXE_SAL_DRIVER, EDK_COMPONENT_TYPE_SAL_RT_DRIVER]:
                         RtModuleList[Module.MetaFile] = ImageInfo
                         #IPF runtime driver needs to be at 2 page alignment.
                         if IsIpfPlatform and ImageInfo.Image.Size % 0x2000 != 0:
                             ImageInfo.Image.Size = (ImageInfo.Image.Size / 0x2000 + 1) * 0x2000
                         RtSize += ImageInfo.Image.Size
-                    elif Module.ModuleType in ['SMM_CORE', 'DXE_SMM_DRIVER', 'MM_STANDALONE', 'MM_CORE_STANDALONE']:
+                    elif Module.ModuleType in [SUP_MODULE_SMM_CORE, SUP_MODULE_DXE_SMM_DRIVER, SUP_MODULE_MM_STANDALONE, SUP_MODULE_MM_CORE_STANDALONE]:
                         SmmModuleList[Module.MetaFile] = ImageInfo
                         SmmSize += ImageInfo.Image.Size
-                        if Module.ModuleType == 'DXE_SMM_DRIVER':
+                        if Module.ModuleType == SUP_MODULE_DXE_SMM_DRIVER:
                             PiSpecVersion = Module.Module.Specification.get('PI_SPECIFICATION_VERSION', '0x00000000')
                             # for PI specification < PI1.1, DXE_SMM_DRIVER also runs as BOOT time driver.
                             if int(PiSpecVersion, 16) < 0x0001000A:
@@ -1616,12 +1617,12 @@ class Build():
             if OutputImageFile != '':
                 ModuleIsPatch = False
                 for Pcd in Module.ModulePcdList:
-                    if Pcd.Type == TAB_PCDS_PATCHABLE_IN_MODULE and Pcd.TokenCName in TAB_PCDS_PATCHABLE_LOAD_FIX_ADDRESS_LIST:
+                    if Pcd.Type == TAB_PCDS_PATCHABLE_IN_MODULE and Pcd.TokenCName in TAB_PCDS_PATCHABLE_LOAD_FIX_ADDRESS_SET:
                         ModuleIsPatch = True
                         break
                 if not ModuleIsPatch:
                     for Pcd in Module.LibraryPcdList:
-                        if Pcd.Type == TAB_PCDS_PATCHABLE_IN_MODULE and Pcd.TokenCName in TAB_PCDS_PATCHABLE_LOAD_FIX_ADDRESS_LIST:
+                        if Pcd.Type == TAB_PCDS_PATCHABLE_IN_MODULE and Pcd.TokenCName in TAB_PCDS_PATCHABLE_LOAD_FIX_ADDRESS_SET:
                             ModuleIsPatch = True
                             break
 

@@ -28,8 +28,8 @@ from IdfClassObject import *
 
 ## PCD type string
 gItemTypeStringDatabase  = {
-    TAB_PCDS_FEATURE_FLAG       :   'FixedAtBuild',
-    TAB_PCDS_FIXED_AT_BUILD     :   'FixedAtBuild',
+    TAB_PCDS_FEATURE_FLAG       :   TAB_PCDS_FIXED_AT_BUILD,
+    TAB_PCDS_FIXED_AT_BUILD     :   TAB_PCDS_FIXED_AT_BUILD,
     TAB_PCDS_PATCHABLE_IN_MODULE:   'BinaryPatch',
     TAB_PCDS_DYNAMIC            :   '',
     TAB_PCDS_DYNAMIC_DEFAULT    :   '',
@@ -41,11 +41,6 @@ gItemTypeStringDatabase  = {
     TAB_PCDS_DYNAMIC_EX_HII     :   '',
 }
 
-## Dynamic PCD types
-gDynamicPcd = [TAB_PCDS_DYNAMIC, TAB_PCDS_DYNAMIC_DEFAULT, TAB_PCDS_DYNAMIC_VPD, TAB_PCDS_DYNAMIC_HII]
-
-## Dynamic-ex PCD types
-gDynamicExPcd = [TAB_PCDS_DYNAMIC_EX, TAB_PCDS_DYNAMIC_EX_DEFAULT, TAB_PCDS_DYNAMIC_EX_VPD, TAB_PCDS_DYNAMIC_EX_HII]
 
 ## Datum size
 gDatumSizeStringDatabase = {TAB_UINT8:'8',TAB_UINT16:'16',TAB_UINT32:'32',TAB_UINT64:'64','BOOLEAN':'BOOLEAN',TAB_VOID:'8'}
@@ -649,7 +644,7 @@ ${END}
 ]
 
 gLibraryStructorPrototype = {
-'BASE'  : TemplateString("""${BEGIN}
+SUP_MODULE_BASE  : TemplateString("""${BEGIN}
 RETURN_STATUS
 EFIAPI
 ${Function} (
@@ -686,7 +681,7 @@ ${Function} (
 }
 
 gLibraryStructorCall = {
-'BASE'  : TemplateString("""${BEGIN}
+SUP_MODULE_BASE  : TemplateString("""${BEGIN}
   Status = ${Function} ();
   ASSERT_EFI_ERROR (Status);${END}
 """),
@@ -709,7 +704,7 @@ gLibraryStructorCall = {
 
 ## Library Constructor and Destructor Templates
 gLibraryString = {
-'BASE'  :   TemplateString("""
+SUP_MODULE_BASE  :   TemplateString("""
 ${BEGIN}${FunctionPrototype}${END}
 
 VOID
@@ -772,21 +767,21 @@ ${FunctionCall}${END}
 gBasicHeaderFile = "Base.h"
 
 gModuleTypeHeaderFile = {
-    "BASE"              :   [gBasicHeaderFile],
-    "SEC"               :   ["PiPei.h", "Library/DebugLib.h"],
-    "PEI_CORE"          :   ["PiPei.h", "Library/DebugLib.h", "Library/PeiCoreEntryPoint.h"],
-    "PEIM"              :   ["PiPei.h", "Library/DebugLib.h", "Library/PeimEntryPoint.h"],
-    "DXE_CORE"          :   ["PiDxe.h", "Library/DebugLib.h", "Library/DxeCoreEntryPoint.h"],
-    "DXE_DRIVER"        :   ["PiDxe.h", "Library/BaseLib.h", "Library/DebugLib.h", "Library/UefiBootServicesTableLib.h", "Library/UefiDriverEntryPoint.h"],
-    "DXE_SMM_DRIVER"    :   ["PiDxe.h", "Library/BaseLib.h", "Library/DebugLib.h", "Library/UefiBootServicesTableLib.h", "Library/UefiDriverEntryPoint.h"],
-    "DXE_RUNTIME_DRIVER":   ["PiDxe.h", "Library/BaseLib.h", "Library/DebugLib.h", "Library/UefiBootServicesTableLib.h", "Library/UefiDriverEntryPoint.h"],
-    "DXE_SAL_DRIVER"    :   ["PiDxe.h", "Library/BaseLib.h", "Library/DebugLib.h", "Library/UefiBootServicesTableLib.h", "Library/UefiDriverEntryPoint.h"],
-    "UEFI_DRIVER"       :   ["Uefi.h",  "Library/BaseLib.h", "Library/DebugLib.h", "Library/UefiBootServicesTableLib.h", "Library/UefiDriverEntryPoint.h"],
-    "UEFI_APPLICATION"  :   ["Uefi.h",  "Library/BaseLib.h", "Library/DebugLib.h", "Library/UefiBootServicesTableLib.h", "Library/UefiApplicationEntryPoint.h"],
-    "SMM_CORE"          :   ["PiDxe.h", "Library/BaseLib.h", "Library/DebugLib.h", "Library/UefiDriverEntryPoint.h"],
-    "MM_STANDALONE"     :   ["PiSmm.h", "Library/BaseLib.h", "Library/DebugLib.h", "Library/SmmDriverStandaloneEntryPoint.h"],
-    "MM_CORE_STANDALONE" :  ["PiSmm.h", "Library/BaseLib.h", "Library/DebugLib.h", "Library/SmmCoreStandaloneEntryPoint.h"],
-    "USER_DEFINED"      :   [gBasicHeaderFile]
+    SUP_MODULE_BASE              :   [gBasicHeaderFile],
+    SUP_MODULE_SEC               :   ["PiPei.h", "Library/DebugLib.h"],
+    SUP_MODULE_PEI_CORE          :   ["PiPei.h", "Library/DebugLib.h", "Library/PeiCoreEntryPoint.h"],
+    SUP_MODULE_PEIM              :   ["PiPei.h", "Library/DebugLib.h", "Library/PeimEntryPoint.h"],
+    SUP_MODULE_DXE_CORE          :   ["PiDxe.h", "Library/DebugLib.h", "Library/DxeCoreEntryPoint.h"],
+    SUP_MODULE_DXE_DRIVER        :   ["PiDxe.h", "Library/BaseLib.h", "Library/DebugLib.h", "Library/UefiBootServicesTableLib.h", "Library/UefiDriverEntryPoint.h"],
+    SUP_MODULE_DXE_SMM_DRIVER    :   ["PiDxe.h", "Library/BaseLib.h", "Library/DebugLib.h", "Library/UefiBootServicesTableLib.h", "Library/UefiDriverEntryPoint.h"],
+    SUP_MODULE_DXE_RUNTIME_DRIVER:   ["PiDxe.h", "Library/BaseLib.h", "Library/DebugLib.h", "Library/UefiBootServicesTableLib.h", "Library/UefiDriverEntryPoint.h"],
+    SUP_MODULE_DXE_SAL_DRIVER    :   ["PiDxe.h", "Library/BaseLib.h", "Library/DebugLib.h", "Library/UefiBootServicesTableLib.h", "Library/UefiDriverEntryPoint.h"],
+    SUP_MODULE_UEFI_DRIVER       :   ["Uefi.h",  "Library/BaseLib.h", "Library/DebugLib.h", "Library/UefiBootServicesTableLib.h", "Library/UefiDriverEntryPoint.h"],
+    SUP_MODULE_UEFI_APPLICATION  :   ["Uefi.h",  "Library/BaseLib.h", "Library/DebugLib.h", "Library/UefiBootServicesTableLib.h", "Library/UefiApplicationEntryPoint.h"],
+    SUP_MODULE_SMM_CORE          :   ["PiDxe.h", "Library/BaseLib.h", "Library/DebugLib.h", "Library/UefiDriverEntryPoint.h"],
+    SUP_MODULE_MM_STANDALONE     :   ["PiSmm.h", "Library/BaseLib.h", "Library/DebugLib.h", "Library/SmmDriverStandaloneEntryPoint.h"],
+    SUP_MODULE_MM_CORE_STANDALONE :  ["PiSmm.h", "Library/BaseLib.h", "Library/DebugLib.h", "Library/SmmCoreStandaloneEntryPoint.h"],
+    SUP_MODULE_USER_DEFINED      :   [gBasicHeaderFile]
 }
 
 ## Autogen internal worker macro to define DynamicEx PCD name includes both the TokenSpaceGuidName 
@@ -802,7 +797,7 @@ def DynExPcdTokenNumberMapping(Info, AutoGenH):
     # Even it is the Library, the PCD is saved in the ModulePcdList
     PcdList = Info.ModulePcdList
     for Pcd in PcdList:
-        if Pcd.Type in gDynamicExPcd:
+        if Pcd.Type in PCD_DYNAMIC_EX_TYPE_SET:
             ExTokenCNameList.append(Pcd.TokenCName)
             PcdExList.append(Pcd)
     if len(ExTokenCNameList) == 0:
@@ -848,7 +843,7 @@ def DynExPcdTokenNumberMapping(Info, AutoGenH):
                 if (Pcd.TokenCName, Pcd.TokenSpaceGuidCName) in GlobalData.MixedPcd[PcdItem]:
                     RealTokenCName = PcdItem[0]
                     break
-            if Pcd.Type in gDynamicExPcd and Pcd.TokenCName == TokenCName:
+            if Pcd.Type in PCD_DYNAMIC_EX_TYPE_SET and Pcd.TokenCName == TokenCName:
                 Index = Index + 1
                 if Index == 1:
                     AutoGenH.Append('\n#define __PCD_%s_VAL_CMP(GuidPtr)  (' % (RealTokenCName))
@@ -867,31 +862,6 @@ def DynExPcdTokenNumberMapping(Info, AutoGenH):
                     AutoGenH.Append('#define _PCD_TOKEN_EX_%s(GuidPtr)   __PCD_%s_ADDR_CMP(GuidPtr) ? __PCD_%s_ADDR_CMP(GuidPtr) : __PCD_%s_VAL_CMP(GuidPtr)  \n'
                                     % (RealTokenCName, RealTokenCName, RealTokenCName, RealTokenCName))
                 TokenCNameList.add(TokenCName)
-
-def GetPcdSize(Pcd):
-    if Pcd.DatumType not in TAB_PCD_NUMERIC_TYPES:
-        Value = Pcd.DefaultValue
-        if Value in [None, '']:
-            return 1
-        elif Value[0] == 'L':
-            return (len(Value) - 2) * 2
-        elif Value[0] == '{':
-            return len(Value.split(','))
-        else:
-            return len(Value) - 1
-    if Pcd.DatumType == TAB_UINT64:
-        return 8
-    if Pcd.DatumType == TAB_UINT32:
-        return 4
-    if Pcd.DatumType == TAB_UINT16:
-        return 2
-    if Pcd.DatumType == TAB_UINT8:
-        return 1
-    if Pcd.DatumType == 'BOOLEAN':
-        return 1
-    else:
-        return Pcd.MaxDatumSize
-
 
 ## Create code for module PCDs
 #
@@ -921,7 +891,7 @@ def CreateModulePcdCode(Info, AutoGenC, AutoGenH, Pcd):
     if Pcd.PcdValueFromComm:
         Pcd.DefaultValue = Pcd.PcdValueFromComm
     
-    if Pcd.Type in gDynamicExPcd:
+    if Pcd.Type in PCD_DYNAMIC_EX_TYPE_SET:
         TokenNumber = int(Pcd.TokenValue, 0)
         # Add TokenSpaceGuidValue value to PcdTokenName to discriminate the DynamicEx PCDs with 
         # different Guids but same TokenCName
@@ -937,7 +907,7 @@ def CreateModulePcdCode(Info, AutoGenC, AutoGenH, Pcd):
             # will not be added into the Database unless it is used by other modules that are 
             # included in the FDF file. 
             # In this case, just assign an invalid token number to make it pass build.
-            if Pcd.Type in PCD_DYNAMIC_TYPE_LIST:
+            if Pcd.Type in PCD_DYNAMIC_TYPE_SET:
                 TokenNumber = 0
             else:
                 EdkLogger.error("build", AUTOGEN_ERROR,
@@ -960,14 +930,14 @@ def CreateModulePcdCode(Info, AutoGenC, AutoGenH, Pcd):
     SetModeStatusName = '_PCD_SET_MODE_' + gDatumSizeStringDatabaseH[Pcd.DatumType] + '_S_' + TokenCName if Pcd.DatumType in gDatumSizeStringDatabaseH else '_PCD_SET_MODE_' + gDatumSizeStringDatabaseH[TAB_VOID] + '_S_' + TokenCName
     GetModeSizeName = '_PCD_GET_MODE_SIZE' + '_' + TokenCName
     
-    if Pcd.Type in gDynamicExPcd:
+    if Pcd.Type in PCD_DYNAMIC_EX_TYPE_SET:
         if Info.IsLibrary:
             PcdList = Info.LibraryPcdList
         else:
             PcdList = Info.ModulePcdList
         PcdExCNameTest = 0
         for PcdModule in PcdList:
-            if PcdModule.Type in gDynamicExPcd and Pcd.TokenCName == PcdModule.TokenCName:
+            if PcdModule.Type in PCD_DYNAMIC_EX_TYPE_SET and Pcd.TokenCName == PcdModule.TokenCName:
                 PcdExCNameTest += 1
             # get out early once we found > 1...
             if PcdExCNameTest > 1:
@@ -996,10 +966,10 @@ def CreateModulePcdCode(Info, AutoGenC, AutoGenH, Pcd):
             else:
                 AutoGenH.Append('#define %s(Value)  LibPcdSetEx%s(&%s, %s, (Value))\n' % (SetModeName, DatumSizeLib, Pcd.TokenSpaceGuidCName, PcdTokenName))
                 AutoGenH.Append('#define %s(Value)  LibPcdSetEx%sS(&%s, %s, (Value))\n' % (SetModeStatusName, DatumSizeLib, Pcd.TokenSpaceGuidCName, PcdTokenName))
-    elif Pcd.Type in gDynamicPcd:
+    elif Pcd.Type in PCD_DYNAMIC_TYPE_SET:
         PcdCNameTest = 0
         for PcdModule in Info.LibraryPcdList + Info.ModulePcdList:
-            if PcdModule.Type in gDynamicPcd and Pcd.TokenCName == PcdModule.TokenCName:
+            if PcdModule.Type in PCD_DYNAMIC_TYPE_SET and Pcd.TokenCName == PcdModule.TokenCName:
                 PcdCNameTest += 1
             # get out early once we found > 1...
             if PcdCNameTest > 1:
@@ -1115,7 +1085,7 @@ def CreateModulePcdCode(Info, AutoGenC, AutoGenH, Pcd):
                                     "The maximum size of VOID* type PCD '%s.%s' is less than its actual size occupied." % (Pcd.TokenSpaceGuidCName, TokenCName),
                                     ExtraData="[%s]" % str(Info))
                     else:
-                        ArraySize = GetPcdSize(Pcd)
+                        ArraySize = Pcd.GetPcdSize()
                         if Unicode:
                             ArraySize = ArraySize / 2
                 Value = NewValue + '0 }'
@@ -1155,7 +1125,7 @@ def CreateModulePcdCode(Info, AutoGenC, AutoGenH, Pcd):
                 AutoGenH.Append('extern %s UINT8 %s%s;\n' %(Const, PcdVariableName, Array))
             AutoGenH.Append('#define %s  %s%s\n' %(GetModeName, Type, PcdVariableName))
                 
-            PcdDataSize = GetPcdSize(Pcd)
+            PcdDataSize = Pcd.GetPcdSize()
             if Pcd.Type == TAB_PCDS_FIXED_AT_BUILD:
                 AutoGenH.Append('#define %s %s\n' % (FixPcdSizeTokenName, PcdDataSize))
                 AutoGenH.Append('#define %s  %s \n' % (GetModeSizeName,FixPcdSizeTokenName))
@@ -1172,14 +1142,14 @@ def CreateModulePcdCode(Info, AutoGenC, AutoGenH, Pcd):
             AutoGenH.Append('extern volatile %s  %s  %s%s;\n' % (Const, Pcd.DatumType, PcdVariableName, Array))
             AutoGenH.Append('#define %s  %s%s\n' % (GetModeName, Type, PcdVariableName))
             
-            PcdDataSize = GetPcdSize(Pcd)
+            PcdDataSize = Pcd.GetPcdSize()
             AutoGenH.Append('#define %s %s\n' % (PatchPcdSizeTokenName, PcdDataSize))
             
             AutoGenH.Append('#define %s  %s \n' % (GetModeSizeName,PatchPcdSizeVariableName))
             AutoGenH.Append('extern UINTN %s; \n' % PatchPcdSizeVariableName)
             AutoGenC.Append('GLOBAL_REMOVE_IF_UNREFERENCED UINTN %s = %s;\n' % (PatchPcdSizeVariableName,PcdDataSize))
         else:
-            PcdDataSize = GetPcdSize(Pcd)
+            PcdDataSize = Pcd.GetPcdSize()
             AutoGenH.Append('#define %s %s\n' % (FixPcdSizeTokenName, PcdDataSize))
             AutoGenH.Append('#define %s  %s \n' % (GetModeSizeName,FixPcdSizeTokenName))
             
@@ -1225,7 +1195,7 @@ def CreateLibraryPcdCode(Info, AutoGenC, AutoGenH, Pcd):
     #
     # Write PCDs
     #
-    if Pcd.Type in gDynamicExPcd:
+    if Pcd.Type in PCD_DYNAMIC_EX_TYPE_SET:
         TokenNumber = int(Pcd.TokenValue, 0)
     else:
         if (Pcd.TokenCName, Pcd.TokenSpaceGuidCName) not in PcdTokenNumber:
@@ -1237,7 +1207,7 @@ def CreateLibraryPcdCode(Info, AutoGenC, AutoGenH, Pcd):
             # will not be added into the Database unless it is used by other modules that are 
             # included in the FDF file. 
             # In this case, just assign an invalid token number to make it pass build.
-            if Pcd.Type in PCD_DYNAMIC_TYPE_LIST:
+            if Pcd.Type in PCD_DYNAMIC_TYPE_SET:
                 TokenNumber = 0
             else:
                 EdkLogger.error("build", AUTOGEN_ERROR,
@@ -1266,7 +1236,7 @@ def CreateLibraryPcdCode(Info, AutoGenC, AutoGenH, Pcd):
             Type = '(VOID *)'
         Array = '[]'
     PcdItemType = Pcd.Type
-    if PcdItemType in gDynamicExPcd:
+    if PcdItemType in PCD_DYNAMIC_EX_TYPE_SET:
         PcdExTokenName = '_PCD_TOKEN_' + TokenSpaceGuidCName + '_' + TokenCName
         AutoGenH.Append('\n#define %s  %dU\n' % (PcdExTokenName, TokenNumber))
         
@@ -1276,7 +1246,7 @@ def CreateLibraryPcdCode(Info, AutoGenC, AutoGenH, Pcd):
             PcdList = Info.ModulePcdList
         PcdExCNameTest = 0
         for PcdModule in PcdList:
-            if PcdModule.Type in gDynamicExPcd and Pcd.TokenCName == PcdModule.TokenCName:
+            if PcdModule.Type in PCD_DYNAMIC_EX_TYPE_SET and Pcd.TokenCName == PcdModule.TokenCName:
                 PcdExCNameTest += 1
             # get out early once we found > 1...
             if PcdExCNameTest > 1:
@@ -1307,13 +1277,13 @@ def CreateLibraryPcdCode(Info, AutoGenC, AutoGenH, Pcd):
                 AutoGenH.Append('#define %s(Value)  LibPcdSetEx%sS(&%s, %s, (Value))\n' % (SetModeStatusName, DatumSizeLib, Pcd.TokenSpaceGuidCName, PcdTokenName))
     else:
         AutoGenH.Append('#define _PCD_TOKEN_%s  %dU\n' % (TokenCName, TokenNumber))
-    if PcdItemType in gDynamicPcd:
+    if PcdItemType in PCD_DYNAMIC_TYPE_SET:
         PcdList = []
         PcdCNameList = []
         PcdList.extend(Info.LibraryPcdList)
         PcdList.extend(Info.ModulePcdList)
         for PcdModule in PcdList:
-            if PcdModule.Type in gDynamicPcd:
+            if PcdModule.Type in PCD_DYNAMIC_TYPE_SET:
                 PcdCNameList.append(PcdModule.TokenCName)
         if PcdCNameList.count(Pcd.TokenCName) > 1:
             EdkLogger.error("build", AUTOGEN_ERROR, "More than one Dynamic Pcds [%s] are different Guids but same CName.They need to be changed to DynamicEx type to avoid the confliction.\n" % (TokenCName), ExtraData="[%s]" % str(Info.MetaFile.Path))
@@ -1338,7 +1308,7 @@ def CreateLibraryPcdCode(Info, AutoGenC, AutoGenH, Pcd):
         else:
             AutoGenH.Append('extern volatile  %s  %s%s;\n' % (DatumType, PcdVariableName, Array))
         AutoGenH.Append('#define %s  %s_gPcd_BinaryPatch_%s\n' %(GetModeName, Type, TokenCName))
-        PcdDataSize = GetPcdSize(Pcd)
+        PcdDataSize = Pcd.GetPcdSize()
         if Pcd.DatumType not in TAB_PCD_NUMERIC_TYPES:
             AutoGenH.Append('#define %s(SizeOfBuffer, Buffer)  LibPatchPcdSetPtrAndSize((VOID *)_gPcd_BinaryPatch_%s, &%s, %s, (SizeOfBuffer), (Buffer))\n' % (SetModeName, TokenCName, PatchPcdSizeVariableName, PatchPcdMaxSizeVariable))
             AutoGenH.Append('#define %s(SizeOfBuffer, Buffer)  LibPatchPcdSetPtrAndSizeS((VOID *)_gPcd_BinaryPatch_%s, &%s, %s, (SizeOfBuffer), (Buffer))\n' % (SetModeStatusName, TokenCName, PatchPcdSizeVariableName, PatchPcdMaxSizeVariable))
@@ -1372,7 +1342,7 @@ def CreateLibraryPcdCode(Info, AutoGenC, AutoGenH, Pcd):
                 AutoGenH.Append('#define _PCD_VALUE_%s %s%s\n' %(TokenCName, Type, PcdVariableName))
             else:
                 AutoGenH.Append('#define _PCD_VALUE_%s %s\n' %(TokenCName, Pcd.DefaultValue))
-        PcdDataSize = GetPcdSize(Pcd)
+        PcdDataSize = Pcd.GetPcdSize()
         if PcdItemType == TAB_PCDS_FIXED_AT_BUILD:
             if Pcd.DatumType not in TAB_PCD_NUMERIC_TYPES:
                 if ConstFixedPcd:
@@ -1406,17 +1376,17 @@ def CreateLibraryConstructorCode(Info, AutoGenC, AutoGenH):
         if len(Lib.ConstructorList) <= 0:
             continue
         Dict = {'Function':Lib.ConstructorList}
-        if Lib.ModuleType in ['BASE', 'SEC']:
-            ConstructorPrototypeString.Append(gLibraryStructorPrototype['BASE'].Replace(Dict))
-            ConstructorCallingString.Append(gLibraryStructorCall['BASE'].Replace(Dict))
-        elif Lib.ModuleType in ['PEI_CORE','PEIM']:
+        if Lib.ModuleType in [SUP_MODULE_BASE, SUP_MODULE_SEC]:
+            ConstructorPrototypeString.Append(gLibraryStructorPrototype[SUP_MODULE_BASE].Replace(Dict))
+            ConstructorCallingString.Append(gLibraryStructorCall[SUP_MODULE_BASE].Replace(Dict))
+        elif Lib.ModuleType in SUP_MODULE_SET_PEI:
             ConstructorPrototypeString.Append(gLibraryStructorPrototype['PEI'].Replace(Dict))
             ConstructorCallingString.Append(gLibraryStructorCall['PEI'].Replace(Dict))
-        elif Lib.ModuleType in ['DXE_CORE','DXE_DRIVER','DXE_SMM_DRIVER','DXE_RUNTIME_DRIVER',
-                                'DXE_SAL_DRIVER','UEFI_DRIVER','UEFI_APPLICATION','SMM_CORE']:
+        elif Lib.ModuleType in [SUP_MODULE_DXE_CORE,SUP_MODULE_DXE_DRIVER,SUP_MODULE_DXE_SMM_DRIVER,SUP_MODULE_DXE_RUNTIME_DRIVER,
+                                SUP_MODULE_DXE_SAL_DRIVER,SUP_MODULE_UEFI_DRIVER,SUP_MODULE_UEFI_APPLICATION,SUP_MODULE_SMM_CORE]:
             ConstructorPrototypeString.Append(gLibraryStructorPrototype['DXE'].Replace(Dict))
             ConstructorCallingString.Append(gLibraryStructorCall['DXE'].Replace(Dict))
-        elif Lib.ModuleType in ['MM_STANDALONE','MM_CORE_STANDALONE']:
+        elif Lib.ModuleType in [SUP_MODULE_MM_STANDALONE,SUP_MODULE_MM_CORE_STANDALONE]:
             ConstructorPrototypeString.Append(gLibraryStructorPrototype['MM'].Replace(Dict))
             ConstructorCallingString.Append(gLibraryStructorCall['MM'].Replace(Dict))
 
@@ -1437,14 +1407,14 @@ def CreateLibraryConstructorCode(Info, AutoGenC, AutoGenH):
     if Info.IsLibrary:
         AutoGenH.Append("${BEGIN}${FunctionPrototype}${END}", Dict)
     else:
-        if Info.ModuleType in ['BASE', 'SEC']:
-            AutoGenC.Append(gLibraryString['BASE'].Replace(Dict))
-        elif Info.ModuleType in ['PEI_CORE','PEIM']:
+        if Info.ModuleType in [SUP_MODULE_BASE, SUP_MODULE_SEC]:
+            AutoGenC.Append(gLibraryString[SUP_MODULE_BASE].Replace(Dict))
+        elif Info.ModuleType in SUP_MODULE_SET_PEI:
             AutoGenC.Append(gLibraryString['PEI'].Replace(Dict))
-        elif Info.ModuleType in ['DXE_CORE','DXE_DRIVER','DXE_SMM_DRIVER','DXE_RUNTIME_DRIVER',
-                                 'DXE_SAL_DRIVER','UEFI_DRIVER','UEFI_APPLICATION','SMM_CORE']:
+        elif Info.ModuleType in [SUP_MODULE_DXE_CORE,SUP_MODULE_DXE_DRIVER,SUP_MODULE_DXE_SMM_DRIVER,SUP_MODULE_DXE_RUNTIME_DRIVER,
+                                 SUP_MODULE_DXE_SAL_DRIVER,SUP_MODULE_UEFI_DRIVER,SUP_MODULE_UEFI_APPLICATION,SUP_MODULE_SMM_CORE]:
             AutoGenC.Append(gLibraryString['DXE'].Replace(Dict))
-        elif Info.ModuleType in ['MM_STANDALONE','MM_CORE_STANDALONE']:
+        elif Info.ModuleType in [SUP_MODULE_MM_STANDALONE,SUP_MODULE_MM_CORE_STANDALONE]:
             AutoGenC.Append(gLibraryString['MM'].Replace(Dict))
 
 ## Create code for library destructor
@@ -1468,17 +1438,17 @@ def CreateLibraryDestructorCode(Info, AutoGenC, AutoGenH):
         if len(Lib.DestructorList) <= 0:
             continue
         Dict = {'Function':Lib.DestructorList}
-        if Lib.ModuleType in ['BASE', 'SEC']:
-            DestructorPrototypeString.Append(gLibraryStructorPrototype['BASE'].Replace(Dict))
-            DestructorCallingString.Append(gLibraryStructorCall['BASE'].Replace(Dict))
-        elif Lib.ModuleType in ['PEI_CORE','PEIM']:
+        if Lib.ModuleType in [SUP_MODULE_BASE, SUP_MODULE_SEC]:
+            DestructorPrototypeString.Append(gLibraryStructorPrototype[SUP_MODULE_BASE].Replace(Dict))
+            DestructorCallingString.Append(gLibraryStructorCall[SUP_MODULE_BASE].Replace(Dict))
+        elif Lib.ModuleType in SUP_MODULE_SET_PEI:
             DestructorPrototypeString.Append(gLibraryStructorPrototype['PEI'].Replace(Dict))
             DestructorCallingString.Append(gLibraryStructorCall['PEI'].Replace(Dict))
-        elif Lib.ModuleType in ['DXE_CORE','DXE_DRIVER','DXE_SMM_DRIVER','DXE_RUNTIME_DRIVER',
-                                'DXE_SAL_DRIVER','UEFI_DRIVER','UEFI_APPLICATION', 'SMM_CORE']:
+        elif Lib.ModuleType in [SUP_MODULE_DXE_CORE,SUP_MODULE_DXE_DRIVER,SUP_MODULE_DXE_SMM_DRIVER,SUP_MODULE_DXE_RUNTIME_DRIVER,
+                                SUP_MODULE_DXE_SAL_DRIVER,SUP_MODULE_UEFI_DRIVER,SUP_MODULE_UEFI_APPLICATION, SUP_MODULE_SMM_CORE]:
             DestructorPrototypeString.Append(gLibraryStructorPrototype['DXE'].Replace(Dict))
             DestructorCallingString.Append(gLibraryStructorCall['DXE'].Replace(Dict))
-        elif Lib.ModuleType in ['MM_STANDALONE','MM_CORE_STANDALONE']:
+        elif Lib.ModuleType in [SUP_MODULE_MM_STANDALONE,SUP_MODULE_MM_CORE_STANDALONE]:
             DestructorPrototypeString.Append(gLibraryStructorPrototype['MM'].Replace(Dict))
             DestructorCallingString.Append(gLibraryStructorCall['MM'].Replace(Dict))
 
@@ -1499,14 +1469,14 @@ def CreateLibraryDestructorCode(Info, AutoGenC, AutoGenH):
     if Info.IsLibrary:
         AutoGenH.Append("${BEGIN}${FunctionPrototype}${END}", Dict)
     else:
-        if Info.ModuleType in ['BASE', 'SEC']:
-            AutoGenC.Append(gLibraryString['BASE'].Replace(Dict))
-        elif Info.ModuleType in ['PEI_CORE','PEIM']:
+        if Info.ModuleType in [SUP_MODULE_BASE, SUP_MODULE_SEC]:
+            AutoGenC.Append(gLibraryString[SUP_MODULE_BASE].Replace(Dict))
+        elif Info.ModuleType in SUP_MODULE_SET_PEI:
             AutoGenC.Append(gLibraryString['PEI'].Replace(Dict))
-        elif Info.ModuleType in ['DXE_CORE','DXE_DRIVER','DXE_SMM_DRIVER','DXE_RUNTIME_DRIVER',
-                                 'DXE_SAL_DRIVER','UEFI_DRIVER','UEFI_APPLICATION','SMM_CORE']:
+        elif Info.ModuleType in [SUP_MODULE_DXE_CORE,SUP_MODULE_DXE_DRIVER,SUP_MODULE_DXE_SMM_DRIVER,SUP_MODULE_DXE_RUNTIME_DRIVER,
+                                 SUP_MODULE_DXE_SAL_DRIVER,SUP_MODULE_UEFI_DRIVER,SUP_MODULE_UEFI_APPLICATION,SUP_MODULE_SMM_CORE]:
             AutoGenC.Append(gLibraryString['DXE'].Replace(Dict))
-        elif Info.ModuleType in ['MM_STANDALONE','MM_CORE_STANDALONE']:
+        elif Info.ModuleType in [SUP_MODULE_MM_STANDALONE,SUP_MODULE_MM_CORE_STANDALONE]:
             AutoGenC.Append(gLibraryString['MM'].Replace(Dict))
 
 
@@ -1517,7 +1487,7 @@ def CreateLibraryDestructorCode(Info, AutoGenC, AutoGenH):
 #   @param      AutoGenH    The TemplateString object for header file
 #
 def CreateModuleEntryPointCode(Info, AutoGenC, AutoGenH):
-    if Info.IsLibrary or Info.ModuleType in ['USER_DEFINED', 'SEC']:
+    if Info.IsLibrary or Info.ModuleType in [SUP_MODULE_USER_DEFINED, SUP_MODULE_SEC]:
         return
     #
     # Module Entry Points
@@ -1537,7 +1507,7 @@ def CreateModuleEntryPointCode(Info, AutoGenC, AutoGenH):
         'UefiSpecVersion':   UefiSpecVersion + 'U'
     }
 
-    if Info.ModuleType in ['PEI_CORE', 'DXE_CORE', 'SMM_CORE', 'MM_CORE_STANDALONE']:
+    if Info.ModuleType in [SUP_MODULE_PEI_CORE, SUP_MODULE_DXE_CORE, SUP_MODULE_SMM_CORE, SUP_MODULE_MM_CORE_STANDALONE]:
         if Info.SourceFileList:
           if NumEntryPoints != 1:
               EdkLogger.error(
@@ -1547,43 +1517,43 @@ def CreateModuleEntryPointCode(Info, AutoGenC, AutoGenH):
                   File=str(Info),
                   ExtraData= ", ".join(Info.Module.ModuleEntryPointList)
                   )
-    if Info.ModuleType == 'PEI_CORE':
+    if Info.ModuleType == SUP_MODULE_PEI_CORE:
         AutoGenC.Append(gPeiCoreEntryPointString.Replace(Dict))
         AutoGenH.Append(gPeiCoreEntryPointPrototype.Replace(Dict))
-    elif Info.ModuleType == 'DXE_CORE':
+    elif Info.ModuleType == SUP_MODULE_DXE_CORE:
         AutoGenC.Append(gDxeCoreEntryPointString.Replace(Dict))
         AutoGenH.Append(gDxeCoreEntryPointPrototype.Replace(Dict))
-    elif Info.ModuleType == 'SMM_CORE':
+    elif Info.ModuleType == SUP_MODULE_SMM_CORE:
         AutoGenC.Append(gSmmCoreEntryPointString.Replace(Dict))
         AutoGenH.Append(gSmmCoreEntryPointPrototype.Replace(Dict))
-    elif Info.ModuleType == 'MM_CORE_STANDALONE':
+    elif Info.ModuleType == SUP_MODULE_MM_CORE_STANDALONE:
         AutoGenC.Append(gMmCoreStandaloneEntryPointString.Replace(Dict))
         AutoGenH.Append(gMmCoreStandaloneEntryPointPrototype.Replace(Dict))
-    elif Info.ModuleType == 'PEIM':
+    elif Info.ModuleType == SUP_MODULE_PEIM:
         if NumEntryPoints < 2:
             AutoGenC.Append(gPeimEntryPointString[NumEntryPoints].Replace(Dict))
         else:
             AutoGenC.Append(gPeimEntryPointString[2].Replace(Dict))
         AutoGenH.Append(gPeimEntryPointPrototype.Replace(Dict))
-    elif Info.ModuleType in ['DXE_RUNTIME_DRIVER','DXE_DRIVER','DXE_SAL_DRIVER','UEFI_DRIVER']:
+    elif Info.ModuleType in [SUP_MODULE_DXE_RUNTIME_DRIVER,SUP_MODULE_DXE_DRIVER,SUP_MODULE_DXE_SAL_DRIVER,SUP_MODULE_UEFI_DRIVER]:
         if NumEntryPoints < 2:
             AutoGenC.Append(gUefiDriverEntryPointString[NumEntryPoints].Replace(Dict))
         else:
             AutoGenC.Append(gUefiDriverEntryPointString[2].Replace(Dict))
         AutoGenH.Append(gUefiDriverEntryPointPrototype.Replace(Dict))
-    elif Info.ModuleType == 'DXE_SMM_DRIVER':
+    elif Info.ModuleType == SUP_MODULE_DXE_SMM_DRIVER:
         if NumEntryPoints == 0:
             AutoGenC.Append(gDxeSmmEntryPointString[0].Replace(Dict))
         else:
             AutoGenC.Append(gDxeSmmEntryPointString[1].Replace(Dict))
         AutoGenH.Append(gDxeSmmEntryPointPrototype.Replace(Dict))
-    elif Info.ModuleType == 'MM_STANDALONE':
+    elif Info.ModuleType == SUP_MODULE_MM_STANDALONE:
         if NumEntryPoints < 2:
             AutoGenC.Append(gMmStandaloneEntryPointString[NumEntryPoints].Replace(Dict))
         else:
             AutoGenC.Append(gMmStandaloneEntryPointString[2].Replace(Dict))
         AutoGenH.Append(gMmStandaloneEntryPointPrototype.Replace(Dict))
-    elif Info.ModuleType == 'UEFI_APPLICATION':
+    elif Info.ModuleType == SUP_MODULE_UEFI_APPLICATION:
         if NumEntryPoints < 2:
             AutoGenC.Append(gUefiApplicationEntryPointString[NumEntryPoints].Replace(Dict))
         else:
@@ -1597,7 +1567,7 @@ def CreateModuleEntryPointCode(Info, AutoGenC, AutoGenH):
 #   @param      AutoGenH    The TemplateString object for header file
 #
 def CreateModuleUnloadImageCode(Info, AutoGenC, AutoGenH):
-    if Info.IsLibrary or Info.ModuleType in ['USER_DEFINED', 'SEC']:
+    if Info.IsLibrary or Info.ModuleType in [SUP_MODULE_USER_DEFINED, SUP_MODULE_SEC]:
         return
     #
     # Unload Image Handlers
@@ -1617,8 +1587,8 @@ def CreateModuleUnloadImageCode(Info, AutoGenC, AutoGenH):
 #   @param      AutoGenH    The TemplateString object for header file
 #
 def CreateGuidDefinitionCode(Info, AutoGenC, AutoGenH):
-    if Info.ModuleType in ["USER_DEFINED", "BASE"]:
-        GuidType = "GUID"
+    if Info.ModuleType in [SUP_MODULE_USER_DEFINED, SUP_MODULE_BASE]:
+        GuidType = TAB_GUID
     else:
         GuidType = "EFI_GUID"
 
@@ -1641,8 +1611,8 @@ def CreateGuidDefinitionCode(Info, AutoGenC, AutoGenH):
 #   @param      AutoGenH    The TemplateString object for header file
 #
 def CreateProtocolDefinitionCode(Info, AutoGenC, AutoGenH):
-    if Info.ModuleType in ["USER_DEFINED", "BASE"]:
-        GuidType = "GUID"
+    if Info.ModuleType in [SUP_MODULE_USER_DEFINED, SUP_MODULE_BASE]:
+        GuidType = TAB_GUID
     else:
         GuidType = "EFI_GUID"
 
@@ -1665,8 +1635,8 @@ def CreateProtocolDefinitionCode(Info, AutoGenC, AutoGenH):
 #   @param      AutoGenH    The TemplateString object for header file
 #
 def CreatePpiDefinitionCode(Info, AutoGenC, AutoGenH):
-    if Info.ModuleType in ["USER_DEFINED", "BASE"]:
-        GuidType = "GUID"
+    if Info.ModuleType in [SUP_MODULE_USER_DEFINED, SUP_MODULE_BASE]:
+        GuidType = TAB_GUID
     else:
         GuidType = "EFI_GUID"
 
@@ -1693,7 +1663,7 @@ def CreatePcdCode(Info, AutoGenC, AutoGenH):
     # Collect Token Space GUIDs used by DynamicEc PCDs
     TokenSpaceList = []
     for Pcd in Info.ModulePcdList:
-        if Pcd.Type in gDynamicExPcd and Pcd.TokenSpaceGuidCName not in TokenSpaceList:
+        if Pcd.Type in PCD_DYNAMIC_EX_TYPE_SET and Pcd.TokenSpaceGuidCName not in TokenSpaceList:
             TokenSpaceList += [Pcd.TokenSpaceGuidCName]
             
     SkuMgr = Info.Workspace.Platform.SkuIdMgr
@@ -1702,8 +1672,8 @@ def CreatePcdCode(Info, AutoGenC, AutoGenH):
     # Add extern declarations to AutoGen.h if one or more Token Space GUIDs were found
     if TokenSpaceList:
         AutoGenH.Append("\n// Definition of PCD Token Space GUIDs used in this module\n\n")
-        if Info.ModuleType in ["USER_DEFINED", "BASE"]:
-            GuidType = "GUID"
+        if Info.ModuleType in [SUP_MODULE_USER_DEFINED, SUP_MODULE_BASE]:
+            GuidType = TAB_GUID
         else:
             GuidType = "EFI_GUID"              
         for Item in TokenSpaceList:

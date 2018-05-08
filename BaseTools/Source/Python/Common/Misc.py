@@ -833,7 +833,7 @@ class TemplateString(object):
     def Append(self, AppendString, Dictionary=None):
         if Dictionary:
             SectionList = self._Parse(AppendString)
-            self.String += "".join([S.Instantiate(Dictionary) for S in SectionList])
+            self.String += "".join(S.Instantiate(Dictionary) for S in SectionList)
         else:
             self.String += AppendString
 
@@ -844,7 +844,7 @@ class TemplateString(object):
     #   @retval     str             The string replaced with placeholder values
     #
     def Replace(self, Dictionary=None):
-        return "".join([S.Instantiate(Dictionary) for S in self._TemplateSectionList])
+        return "".join(S.Instantiate(Dictionary) for S in self._TemplateSectionList)
 
 ## Progress indicator class
 #
@@ -1219,7 +1219,7 @@ class tdict:
 
 def IsFieldValueAnArray (Value):
     Value = Value.strip()
-    if Value.startswith('GUID') and Value.endswith(')'):
+    if Value.startswith(TAB_GUID) and Value.endswith(')'):
         return True
     if Value.startswith('L"') and Value.endswith('"')  and len(list(Value[2:-1])) > 1:
         return True
@@ -1316,7 +1316,7 @@ def ParseFieldValue (Value):
         if Size > 8:
             raise BadExpression('Value (%s) Size larger than %d' % (Value, Size))
         return Value, 8
-    if Value.startswith('GUID') and Value.endswith(')'):
+    if Value.startswith(TAB_GUID) and Value.endswith(')'):
         Value = Value.split('(', 1)[1][:-1].strip()
         if Value[0] == '{' and Value[-1] == '}':
             TmpValue = GuidStructureStringToGuidString(Value)
@@ -1926,7 +1926,7 @@ class DefaultStore():
         if not self.DefaultStores or "0" in self.DefaultStores:
             return "0",TAB_DEFAULT_STORES_DEFAULT
         else:
-            minvalue = min([int(value_str) for value_str in self.DefaultStores])
+            minvalue = min(int(value_str) for value_str in self.DefaultStores)
             return (str(minvalue), self.DefaultStores[str(minvalue)])
     def GetMin(self,DefaultSIdList):
         if not DefaultSIdList:
@@ -2023,7 +2023,7 @@ class SkuClass():
             skuorderset.append(self.GetSkuChain(skuname))
         
         skuorder = []
-        for index in range(max([len(item) for item in skuorderset])):
+        for index in range(max(len(item) for item in skuorderset)):
             for subset in skuorderset:
                 if index > len(subset)-1:
                     continue
@@ -2087,20 +2087,7 @@ class SkuClass():
 # Pack a registry format GUID
 #
 def PackRegistryFormatGuid(Guid):
-    Guid = Guid.split('-')
-    return pack('=LHHBBBBBBBB',
-                int(Guid[0], 16),
-                int(Guid[1], 16),
-                int(Guid[2], 16),
-                int(Guid[3][-4:-2], 16),
-                int(Guid[3][-2:], 16),
-                int(Guid[4][-12:-10], 16),
-                int(Guid[4][-10:-8], 16),
-                int(Guid[4][-8:-6], 16),
-                int(Guid[4][-6:-4], 16),
-                int(Guid[4][-4:-2], 16),
-                int(Guid[4][-2:], 16)
-                )
+    return PackGUID(Guid.split('-'))
 
 ##  Get the integer value from string like "14U" or integer like 2
 #
@@ -2125,6 +2112,42 @@ def GetIntegerValue(Input):
         return 0
     else:
         return int(String)
+
+#
+# Pack a GUID (registry format) list into a buffer and return it
+#
+def PackGUID(Guid):
+    return pack(PACK_PATTERN_GUID,
+                int(Guid[0], 16),
+                int(Guid[1], 16),
+                int(Guid[2], 16),
+                int(Guid[3][-4:-2], 16),
+                int(Guid[3][-2:], 16),
+                int(Guid[4][-12:-10], 16),
+                int(Guid[4][-10:-8], 16),
+                int(Guid[4][-8:-6], 16),
+                int(Guid[4][-6:-4], 16),
+                int(Guid[4][-4:-2], 16),
+                int(Guid[4][-2:], 16)
+                )
+
+#
+# Pack a GUID (byte) list into a buffer and return it
+#
+def PackByteFormatGUID(Guid):
+    return pack(PACK_PATTERN_GUID,
+                Guid[0],
+                Guid[1],
+                Guid[2],
+                Guid[3],
+                Guid[4],
+                Guid[5],
+                Guid[6],
+                Guid[7],
+                Guid[8],
+                Guid[9],
+                Guid[10],
+                )
 
 ##
 #

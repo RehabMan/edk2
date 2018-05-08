@@ -28,17 +28,17 @@ from Workspace.BuildClassObject import ModuleBuildClassObject, LibraryClassObjec
 class InfBuildData(ModuleBuildClassObject):
     # dict used to convert PCD type in database to string used by build tool
     _PCD_TYPE_STRING_ = {
-        MODEL_PCD_FIXED_AT_BUILD        :   "FixedAtBuild",
-        MODEL_PCD_PATCHABLE_IN_MODULE   :   "PatchableInModule",
-        MODEL_PCD_FEATURE_FLAG          :   "FeatureFlag",
-        MODEL_PCD_DYNAMIC               :   "Dynamic",
-        MODEL_PCD_DYNAMIC_DEFAULT       :   "Dynamic",
-        MODEL_PCD_DYNAMIC_HII           :   "DynamicHii",
-        MODEL_PCD_DYNAMIC_VPD           :   "DynamicVpd",
-        MODEL_PCD_DYNAMIC_EX            :   "DynamicEx",
-        MODEL_PCD_DYNAMIC_EX_DEFAULT    :   "DynamicEx",
-        MODEL_PCD_DYNAMIC_EX_HII        :   "DynamicExHii",
-        MODEL_PCD_DYNAMIC_EX_VPD        :   "DynamicExVpd",
+        MODEL_PCD_FIXED_AT_BUILD        :   TAB_PCDS_FIXED_AT_BUILD,
+        MODEL_PCD_PATCHABLE_IN_MODULE   :   TAB_PCDS_PATCHABLE_IN_MODULE,
+        MODEL_PCD_FEATURE_FLAG          :   TAB_PCDS_FEATURE_FLAG,
+        MODEL_PCD_DYNAMIC               :   TAB_PCDS_DYNAMIC,
+        MODEL_PCD_DYNAMIC_DEFAULT       :   TAB_PCDS_DYNAMIC,
+        MODEL_PCD_DYNAMIC_HII           :   TAB_PCDS_DYNAMIC_HII,
+        MODEL_PCD_DYNAMIC_VPD           :   TAB_PCDS_DYNAMIC_VPD,
+        MODEL_PCD_DYNAMIC_EX            :   TAB_PCDS_DYNAMIC_EX,
+        MODEL_PCD_DYNAMIC_EX_DEFAULT    :   TAB_PCDS_DYNAMIC_EX,
+        MODEL_PCD_DYNAMIC_EX_HII        :   TAB_PCDS_DYNAMIC_EX_HII,
+        MODEL_PCD_DYNAMIC_EX_VPD        :   TAB_PCDS_DYNAMIC_EX_VPD,
     }
 
     # dict used to convert part of [Defines] to members of InfBuildData directly
@@ -66,32 +66,12 @@ class InfBuildData(ModuleBuildClassObject):
         TAB_COMPONENTS_SOURCE_OVERRIDE_PATH         : "_SourceOverridePath",
     }
 
-    # dict used to convert Component type to Module type
-    _MODULE_TYPE_ = {
-        "LIBRARY"               :   "BASE",
-        "SECURITY_CORE"         :   "SEC",
-        "PEI_CORE"              :   "PEI_CORE",
-        "COMBINED_PEIM_DRIVER"  :   "PEIM",
-        "PIC_PEIM"              :   "PEIM",
-        "RELOCATABLE_PEIM"      :   "PEIM",
-        "PE32_PEIM"             :   "PEIM",
-        "BS_DRIVER"             :   "DXE_DRIVER",
-        "RT_DRIVER"             :   "DXE_RUNTIME_DRIVER",
-        "SAL_RT_DRIVER"         :   "DXE_SAL_DRIVER",
-        "DXE_SMM_DRIVER"        :   "DXE_SMM_DRIVER",
-    #    "SMM_DRIVER"            :   "DXE_SMM_DRIVER",
-    #    "BS_DRIVER"             :   "DXE_SMM_DRIVER",
-    #    "BS_DRIVER"             :   "UEFI_DRIVER",
-        "APPLICATION"           :   "UEFI_APPLICATION",
-        "LOGO"                  :   "BASE",
-    }
-
     # regular expression for converting XXX_FLAGS in [nmake] section to new type
     _NMAKE_FLAG_PATTERN_ = re.compile("(?:EBC_)?([A-Z]+)_(?:STD_|PROJ_|ARCH_)?FLAGS(?:_DLL|_ASL|_EXE)?", re.UNICODE)
     # dict used to convert old tool name used in [nmake] section to new ones
     _TOOL_CODE_ = {
         "C"         :   "CC",
-        "LIB"       :   "SLINK",
+        BINARY_FILE_TYPE_LIB       :   "SLINK",
         "LINK"      :   "DLINK",
     }
 
@@ -362,9 +342,9 @@ class InfBuildData(ModuleBuildClassObject):
                 EdkLogger.error("build", ATTRIBUTE_NOT_AVAILABLE,
                                 "COMPONENT_TYPE is not given", File=self.MetaFile)
             self._BuildType = self._ComponentType.upper()
-            if self._ComponentType in self._MODULE_TYPE_:
-                self._ModuleType = self._MODULE_TYPE_[self._ComponentType]
-            if self._ComponentType == 'LIBRARY':
+            if self._ComponentType in COMPONENT_TO_MODULE_MAP_DICT:
+                self._ModuleType = COMPONENT_TO_MODULE_MAP_DICT[self._ComponentType]
+            if self._ComponentType == EDK_COMPONENT_TYPE_LIBRARY:
                 self._LibraryClass = [LibraryClassObject(self._BaseName, SUP_MODULE_LIST)]
             # make use some [nmake] section macros
             Macros = self._Macros
@@ -461,9 +441,9 @@ class InfBuildData(ModuleBuildClassObject):
             if self._Header_ is None:
                 self._GetHeaderInfo()
             if self._ModuleType is None:
-                self._ModuleType = 'BASE'
+                self._ModuleType = SUP_MODULE_BASE
             if self._ModuleType not in SUP_MODULE_LIST:
-                self._ModuleType = "USER_DEFINED"
+                self._ModuleType = SUP_MODULE_USER_DEFINED
         return self._ModuleType
 
     ## Retrieve COMPONENT_TYPE
@@ -472,7 +452,7 @@ class InfBuildData(ModuleBuildClassObject):
             if self._Header_ is None:
                 self._GetHeaderInfo()
             if self._ComponentType is None:
-                self._ComponentType = 'USER_DEFINED'
+                self._ComponentType = SUP_MODULE_USER_DEFINED
         return self._ComponentType
 
     ## Retrieve "BUILD_TYPE"
@@ -481,7 +461,7 @@ class InfBuildData(ModuleBuildClassObject):
             if self._Header_ is None:
                 self._GetHeaderInfo()
             if not self._BuildType:
-                self._BuildType = "BASE"
+                self._BuildType = SUP_MODULE_BASE
         return self._BuildType
 
     ## Retrieve file guid
@@ -718,7 +698,7 @@ class InfBuildData(ModuleBuildClassObject):
                 CName = Record[0]
                 Value = ProtocolValue(CName, self.Packages, self.MetaFile.Path)
                 if Value is None:
-                    PackageList = "\n\t".join([str(P) for P in self.Packages])
+                    PackageList = "\n\t".join(str(P) for P in self.Packages)
                     EdkLogger.error('build', RESOURCE_NOT_AVAILABLE,
                                     "Value of Protocol [%s] is not found under [Protocols] section in" % CName,
                                     ExtraData=PackageList, File=self.MetaFile, Line=Record[-1])
@@ -743,7 +723,7 @@ class InfBuildData(ModuleBuildClassObject):
                 CName = Record[0]
                 Value = PpiValue(CName, self.Packages, self.MetaFile.Path)
                 if Value is None:
-                    PackageList = "\n\t".join([str(P) for P in self.Packages])
+                    PackageList = "\n\t".join(str(P) for P in self.Packages)
                     EdkLogger.error('build', RESOURCE_NOT_AVAILABLE,
                                     "Value of PPI [%s] is not found under [Ppis] section in " % CName,
                                     ExtraData=PackageList, File=self.MetaFile, Line=Record[-1])
@@ -768,7 +748,7 @@ class InfBuildData(ModuleBuildClassObject):
                 CName = Record[0]
                 Value = GuidValue(CName, self.Packages, self.MetaFile.Path)
                 if Value is None:
-                    PackageList = "\n\t".join([str(P) for P in self.Packages])
+                    PackageList = "\n\t".join(str(P) for P in self.Packages)
                     EdkLogger.error('build', RESOURCE_NOT_AVAILABLE,
                                     "Value of Guid [%s] is not found under [Guids] section in" % CName,
                                     ExtraData=PackageList, File=self.MetaFile, Line=Record[-1])
@@ -899,14 +879,14 @@ class InfBuildData(ModuleBuildClassObject):
 
             # PEIM and DXE drivers must have a valid [Depex] section
             if len(self.LibraryClass) == 0 and len(RecordList) == 0:
-                if self.ModuleType == 'DXE_DRIVER' or self.ModuleType == 'PEIM' or self.ModuleType == 'DXE_SMM_DRIVER' or \
-                    self.ModuleType == 'DXE_SAL_DRIVER' or self.ModuleType == 'DXE_RUNTIME_DRIVER':
+                if self.ModuleType == SUP_MODULE_DXE_DRIVER or self.ModuleType == SUP_MODULE_PEIM or self.ModuleType == SUP_MODULE_DXE_SMM_DRIVER or \
+                    self.ModuleType == SUP_MODULE_DXE_SAL_DRIVER or self.ModuleType == SUP_MODULE_DXE_RUNTIME_DRIVER:
                     EdkLogger.error('build', RESOURCE_NOT_AVAILABLE, "No [Depex] section or no valid expression in [Depex] section for [%s] module" \
                                     % self.ModuleType, File=self.MetaFile)
 
-            if len(RecordList) != 0 and self.ModuleType == 'USER_DEFINED':
+            if len(RecordList) != 0 and self.ModuleType == SUP_MODULE_USER_DEFINED:
                 for Record in RecordList:
-                    if Record[4] not in ['PEIM', 'DXE_DRIVER', 'DXE_SMM_DRIVER']:
+                    if Record[4] not in [SUP_MODULE_PEIM, SUP_MODULE_DXE_DRIVER, SUP_MODULE_DXE_SMM_DRIVER]:
                         EdkLogger.error('build', FORMAT_INVALID,
                                         "'%s' module must specify the type of [Depex] section" % self.ModuleType,
                                         File=self.MetaFile)
@@ -921,7 +901,7 @@ class InfBuildData(ModuleBuildClassObject):
                     Depex[Arch, ModuleType] = []
                 DepexList = Depex[Arch, ModuleType]
                 for Token in TokenList:
-                    if Token in DEPEX_SUPPORTED_OPCODE:
+                    if Token in DEPEX_SUPPORTED_OPCODE_SET:
                         DepexList.append(Token)
                     elif Token.endswith(".inf"):  # module file name
                         ModuleFile = os.path.normpath(Token)
@@ -938,7 +918,7 @@ class InfBuildData(ModuleBuildClassObject):
                             if Value is None:
                                 Value = GuidValue(Token, self.Packages, self.MetaFile.Path)
                         if Value is None:
-                            PackageList = "\n\t".join([str(P) for P in self.Packages])
+                            PackageList = "\n\t".join(str(P) for P in self.Packages)
                             EdkLogger.error('build', RESOURCE_NOT_AVAILABLE,
                                             "Value of [%s] is not found in" % Token,
                                             ExtraData=PackageList, File=self.MetaFile, Line=Record[-1])
@@ -981,7 +961,7 @@ class InfBuildData(ModuleBuildClassObject):
             if TokenSpaceGuid not in self.Guids:
                 Value = GuidValue(TokenSpaceGuid, self.Packages, self.MetaFile.Path)
                 if Value is None:
-                    PackageList = "\n\t".join([str(P) for P in self.Packages])
+                    PackageList = "\n\t".join(str(P) for P in self.Packages)
                     EdkLogger.error('build', RESOURCE_NOT_AVAILABLE,
                                     "Value of Guid [%s] is not found under [Guids] section in" % TokenSpaceGuid,
                                     ExtraData=PackageList, File=self.MetaFile, Line=LineNo)
@@ -1046,13 +1026,13 @@ class InfBuildData(ModuleBuildClassObject):
                 # if platform doesn't give its type, use 'lowest' one in the
                 # following order, if any
                 #
-                #   "FixedAtBuild", "PatchableInModule", "FeatureFlag", "Dynamic", "DynamicEx"
+                #   TAB_PCDS_FIXED_AT_BUILD, TAB_PCDS_PATCHABLE_IN_MODULE, TAB_PCDS_FEATURE_FLAG, TAB_PCDS_DYNAMIC, TAB_PCDS_DYNAMIC_EX
                 #
                 _GuidDict.update(Package.Guids)
                 PcdType = self._PCD_TYPE_STRING_[Type]
                 if Type == MODEL_PCD_DYNAMIC:
                     Pcd.Pending = True
-                    for T in ["FixedAtBuild", "PatchableInModule", "FeatureFlag", "Dynamic", "DynamicEx"]:
+                    for T in PCD_TYPE_LIST:
                         if (PcdRealName, TokenSpaceGuid) in GlobalData.MixedPcd:
                             for item in GlobalData.MixedPcd[(PcdRealName, TokenSpaceGuid)]:
                                 if str(item[0]).endswith(T) and (item[0], item[1], T) in Package.Pcds:
@@ -1136,7 +1116,7 @@ class InfBuildData(ModuleBuildClassObject):
                     Pcd.DatumType = PcdInPackage.DatumType
                     Pcd.MaxDatumSize = PcdInPackage.MaxDatumSize
                     Pcd.InfDefaultValue = Pcd.DefaultValue
-                    if Pcd.DefaultValue in [None, '']:
+                    if not Pcd.DefaultValue:
                         Pcd.DefaultValue = PcdInPackage.DefaultValue
                     else:
                         try:
@@ -1151,7 +1131,7 @@ class InfBuildData(ModuleBuildClassObject):
                             FORMAT_INVALID,
                             "PCD [%s.%s] in [%s] is not found in dependent packages:" % (TokenSpaceGuid, PcdRealName, self.MetaFile),
                             File=self.MetaFile, Line=LineNo,
-                            ExtraData="\t%s" % '\n\t'.join([str(P) for P in self.Packages])
+                            ExtraData="\t%s" % '\n\t'.join(str(P) for P in self.Packages)
                             )
             Pcds[PcdCName, TokenSpaceGuid] = Pcd
 

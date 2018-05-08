@@ -47,21 +47,6 @@ from Common.DataType import *
 import collections
 from Common.Expression import *
 
-gComponentType2ModuleType = {
-    "LIBRARY"               :   "BASE",
-    "SECURITY_CORE"         :   "SEC",
-    "PEI_CORE"              :   "PEI_CORE",
-    "COMBINED_PEIM_DRIVER"  :   "PEIM",
-    "PIC_PEIM"              :   "PEIM",
-    "RELOCATABLE_PEIM"      :   "PEIM",
-    "PE32_PEIM"             :   "PEIM",
-    "BS_DRIVER"             :   "DXE_DRIVER",
-    "RT_DRIVER"             :   "DXE_RUNTIME_DRIVER",
-    "SAL_RT_DRIVER"         :   "DXE_SAL_DRIVER",
-    "APPLICATION"           :   "UEFI_APPLICATION",
-    "LOGO"                  :   "BASE",
-}
-
 ## Pattern to extract contents in EDK DXS files
 gDxsDependencyPattern = re.compile(r"DEPENDENCY_START(.+)DEPENDENCY_END", re.DOTALL)
 
@@ -109,33 +94,33 @@ gSubSectionSep = "-" * gLineMaxLength
 
 ## The look up table to map PCD type to pair of report display type and DEC type
 gPcdTypeMap = {
-  'FixedAtBuild'     : ('FIXED',  'FixedAtBuild'),
-  'PatchableInModule': ('PATCH',  'PatchableInModule'),
-  'FeatureFlag'      : ('FLAG',   'FeatureFlag'),
-  'Dynamic'          : ('DYN',    'Dynamic'),
-  'DynamicHii'       : ('DYNHII', 'Dynamic'),
-  'DynamicVpd'       : ('DYNVPD', 'Dynamic'),
-  'DynamicEx'        : ('DEX',    'DynamicEx'),
-  'DynamicExHii'     : ('DEXHII', 'DynamicEx'),
-  'DynamicExVpd'     : ('DEXVPD', 'DynamicEx'),
+  TAB_PCDS_FIXED_AT_BUILD     : ('FIXED',  TAB_PCDS_FIXED_AT_BUILD),
+  TAB_PCDS_PATCHABLE_IN_MODULE: ('PATCH',  TAB_PCDS_PATCHABLE_IN_MODULE),
+  TAB_PCDS_FEATURE_FLAG       : ('FLAG',   TAB_PCDS_FEATURE_FLAG),
+  TAB_PCDS_DYNAMIC            : ('DYN',    TAB_PCDS_DYNAMIC),
+  TAB_PCDS_DYNAMIC_HII        : ('DYNHII', TAB_PCDS_DYNAMIC),
+  TAB_PCDS_DYNAMIC_VPD        : ('DYNVPD', TAB_PCDS_DYNAMIC),
+  TAB_PCDS_DYNAMIC_EX         : ('DEX',    TAB_PCDS_DYNAMIC_EX),
+  TAB_PCDS_DYNAMIC_EX_HII     : ('DEXHII', TAB_PCDS_DYNAMIC_EX),
+  TAB_PCDS_DYNAMIC_EX_VPD     : ('DEXVPD', TAB_PCDS_DYNAMIC_EX),
   }
 
 ## The look up table to map module type to driver type
 gDriverTypeMap = {
-  'SEC'               : '0x3 (SECURITY_CORE)',
-  'PEI_CORE'          : '0x4 (PEI_CORE)',
-  'PEIM'              : '0x6 (PEIM)',
-  'DXE_CORE'          : '0x5 (DXE_CORE)',
-  'DXE_DRIVER'        : '0x7 (DRIVER)',
-  'DXE_SAL_DRIVER'    : '0x7 (DRIVER)',
-  'DXE_SMM_DRIVER'    : '0x7 (DRIVER)',
-  'DXE_RUNTIME_DRIVER': '0x7 (DRIVER)',
-  'UEFI_DRIVER'       : '0x7 (DRIVER)',
-  'UEFI_APPLICATION'  : '0x9 (APPLICATION)',
-  'SMM_CORE'          : '0xD (SMM_CORE)',
+  SUP_MODULE_SEC               : '0x3 (SECURITY_CORE)',
+  SUP_MODULE_PEI_CORE          : '0x4 (PEI_CORE)',
+  SUP_MODULE_PEIM              : '0x6 (PEIM)',
+  SUP_MODULE_DXE_CORE          : '0x5 (DXE_CORE)',
+  SUP_MODULE_DXE_DRIVER        : '0x7 (DRIVER)',
+  SUP_MODULE_DXE_SAL_DRIVER    : '0x7 (DRIVER)',
+  SUP_MODULE_DXE_SMM_DRIVER    : '0x7 (DRIVER)',
+  SUP_MODULE_DXE_RUNTIME_DRIVER: '0x7 (DRIVER)',
+  SUP_MODULE_UEFI_DRIVER       : '0x7 (DRIVER)',
+  SUP_MODULE_UEFI_APPLICATION  : '0x9 (APPLICATION)',
+  SUP_MODULE_SMM_CORE          : '0xD (SMM_CORE)',
   'SMM_DRIVER'        : '0xA (SMM)', # Extension of module type to support PI 1.1 SMM drivers
-  'MM_STANDALONE'     : '0xE (MM_STANDALONE)',
-  'MM_CORE_STANDALONE' : '0xF (MM_CORE_STANDALONE)'
+  SUP_MODULE_MM_STANDALONE     : '0xE (MM_STANDALONE)',
+  SUP_MODULE_MM_CORE_STANDALONE : '0xF (MM_CORE_STANDALONE)'
   }
 
 ## The look up table of the supported opcode in the dependency expression binaries
@@ -223,7 +208,7 @@ def FindIncludeFiles(Source, IncludePathList, IncludeFiles):
             FileName = "Protocol/%(Key)s/%(Key)s.h" % {"Key" : Key}
         elif "PPI" in Type:
             FileName = "Ppi/%(Key)s/%(Key)s.h" % {"Key" : Key}
-        elif "GUID" in Type:
+        elif TAB_GUID in Type:
             FileName = "Guid/%(Key)s/%(Key)s.h" % {"Key" : Key}
         else:
             continue
@@ -313,7 +298,7 @@ class DepexParser(object):
             Statement = gOpCodeList[struct.unpack("B", OpCode)[0]]
             if Statement in ["BEFORE", "AFTER", "PUSH"]:
                 GuidValue = "%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X" % \
-                            struct.unpack("=LHHBBBBBBBB", DepexFile.read(16))
+                            struct.unpack(PACK_PATTERN_GUID, DepexFile.read(16))
                 GuidString = self._GuidDb.get(GuidValue, GuidValue)
                 Statement = "%s %s" % (Statement, GuidString)
             DepexStatement.append(Statement)
@@ -422,9 +407,9 @@ class DepexReport(object):
         self._DepexFileName = os.path.join(M.BuildDir, "OUTPUT", M.Module.BaseName + ".depex")
         ModuleType = M.ModuleType
         if not ModuleType:
-            ModuleType = gComponentType2ModuleType.get(M.ComponentType, "")
+            ModuleType = COMPONENT_TO_MODULE_MAP_DICT.get(M.ComponentType, "")
 
-        if ModuleType in ["SEC", "PEI_CORE", "DXE_CORE", "SMM_CORE", "MM_CORE_STANDALONE", "UEFI_APPLICATION"]:
+        if ModuleType in [SUP_MODULE_SEC, SUP_MODULE_PEI_CORE, SUP_MODULE_DXE_CORE, SUP_MODULE_SMM_CORE, SUP_MODULE_MM_CORE_STANDALONE, SUP_MODULE_UEFI_APPLICATION]:
             return
       
         for Source in M.SourceFileList:
@@ -587,11 +572,11 @@ class ModuleReport(object):
         if not M.IsLibrary:
             ModuleType = M.ModuleType
             if not ModuleType:
-                ModuleType = gComponentType2ModuleType.get(M.ComponentType, "")
+                ModuleType = COMPONENT_TO_MODULE_MAP_DICT.get(M.ComponentType, "")
             #
             # If a module complies to PI 1.1, promote Module type to "SMM_DRIVER"
             #
-            if ModuleType == "DXE_SMM_DRIVER":
+            if ModuleType == SUP_MODULE_DXE_SMM_DRIVER:
                 PiSpec = M.Module.Specification.get("PI_SPECIFICATION_VERSION", "0x00010000")
                 if int(PiSpec, 0) >= 0x0001000A:
                     ModuleType = "SMM_DRIVER"
@@ -799,7 +784,7 @@ class PcdReport(object):
                 Pcd = Pa.Platform.Pcds[item]
                 if not Pcd.Type:
                     # check the Pcd in FDF file, whether it is used in module first
-                    for T in ["FixedAtBuild", "PatchableInModule", "FeatureFlag", "Dynamic", "DynamicEx"]:
+                    for T in PCD_TYPE_LIST:
                         PcdList = self.AllPcds.setdefault(Pcd.TokenSpaceGuidCName, {}).setdefault(T, [])
                         if Pcd in PcdList:
                             Pcd.Type = T
@@ -807,7 +792,7 @@ class PcdReport(object):
                 if not Pcd.Type:
                     PcdTypeFlag = False
                     for package in Pa.PackageList:
-                        for T in ["FixedAtBuild", "PatchableInModule", "FeatureFlag", "Dynamic", "DynamicEx"]:
+                        for T in PCD_TYPE_LIST:
                             if (Pcd.TokenCName, Pcd.TokenSpaceGuidCName, T) in package.Pcds:
                                 Pcd.Type = T
                                 PcdTypeFlag = True
@@ -819,10 +804,10 @@ class PcdReport(object):
                 if not Pcd.DatumType:
                     PcdType = Pcd.Type
                     # Try to remove Hii and Vpd suffix
-                    if PcdType.startswith("DynamicEx"):
-                        PcdType = "DynamicEx"
-                    elif PcdType.startswith("Dynamic"):
-                        PcdType = "Dynamic"
+                    if PcdType.startswith(TAB_PCDS_DYNAMIC_EX):
+                        PcdType = TAB_PCDS_DYNAMIC_EX
+                    elif PcdType.startswith(TAB_PCDS_DYNAMIC):
+                        PcdType = TAB_PCDS_DYNAMIC
                     for package in Pa.PackageList:
                         if (Pcd.TokenCName, Pcd.TokenSpaceGuidCName, PcdType) in package.Pcds:
                             Pcd.DatumType = package.Pcds[(Pcd.TokenCName, Pcd.TokenSpaceGuidCName, PcdType)].DatumType
@@ -1382,7 +1367,7 @@ class PredictionReport(object):
                 # their source code to find PPI/Protocol produce or consume
                 # information.
                 #
-                if Module.ModuleType == "BASE":
+                if Module.ModuleType == SUP_MODULE_BASE:
                     continue
                 #
                 # Add module referenced source files
@@ -1425,7 +1410,7 @@ class PredictionReport(object):
         if Wa.FdfProfile:
             for Fd in Wa.FdfProfile.FdDict:
                 for FdRegion in Wa.FdfProfile.FdDict[Fd].RegionList:
-                    if FdRegion.RegionType != "FV":
+                    if FdRegion.RegionType != BINARY_FILE_TYPE_FV:
                         continue
                     for FvName in FdRegion.RegionDataList:
                         if FvName in self._FvList:
@@ -1701,7 +1686,7 @@ class FdRegionReport(object):
         # If the input FdRegion is not a firmware volume,
         # we are done.
         #
-        if self.Type != "FV":
+        if self.Type != BINARY_FILE_TYPE_FV:
             return
 
         #
@@ -1795,7 +1780,7 @@ class FdRegionReport(object):
         FileWrite(File, "Type:               %s" % Type)
         FileWrite(File, "Base Address:       0x%X" % BaseAddress)
 
-        if self.Type == "FV":
+        if self.Type == BINARY_FILE_TYPE_FV:
             FvTotalSize = 0
             FvTakenSize = 0
             FvFreeSize  = 0
@@ -1858,7 +1843,7 @@ class FdRegionReport(object):
         if (len(self.FvList) > 0):
             for FvItem in self.FvList:
                 Info = self.FvInfo[FvItem]
-                self._GenerateReport(File, Info[0], "FV", Info[1], Info[2], FvItem)
+                self._GenerateReport(File, Info[0], TAB_FV_DIRECTORY, Info[1], Info[2], FvItem)
         else:
             self._GenerateReport(File, "FD Region", self.Type, self.BaseAddress, self.Size)
 
@@ -1884,7 +1869,7 @@ class FdReport(object):
         self.BaseAddress = Fd.BaseAddress
         self.Size = Fd.Size
         self.FdRegionList = [FdRegionReport(FdRegion, Wa) for FdRegion in Fd.RegionList]
-        self.FvPath = os.path.join(Wa.BuildDir, "FV")
+        self.FvPath = os.path.join(Wa.BuildDir, TAB_FV_DIRECTORY)
         self.VpdFilePath = os.path.join(self.FvPath, "%s.map" % Wa.Platform.VpdToolGuid)
         self.VPDBaseAddress = 0
         self.VPDSize = 0

@@ -72,6 +72,37 @@ class PcdClassObject(object):
         self.PcdValueFromComm = ""
         self.DefinitionPosition = ("","")
 
+    ## Get the maximum number of bytes
+    def GetPcdMaxSize(self):
+        if self.DatumType in TAB_PCD_NUMERIC_TYPES:
+            return MAX_SIZE_TYPE[self.DatumType]
+
+        MaxSize = int(self.MaxDatumSize,10) if self.MaxDatumSize else 0
+        if self.PcdValueFromComm:
+            if self.PcdValueFromComm.startswith("{") and self.PcdValueFromComm.endswith("}"):
+                return max([len(self.PcdValueFromComm.split(",")),MaxSize])
+            elif self.PcdValueFromComm.startswith("\"") or self.PcdValueFromComm.startswith("\'"):
+                return max([len(self.PcdValueFromComm)-2+1,MaxSize])
+            elif self.PcdValueFromComm.startswith("L\""):
+                return max([2*(len(self.PcdValueFromComm)-3+1),MaxSize])
+            else:
+                return max([len(self.PcdValueFromComm),MaxSize])
+        return MaxSize
+
+    ## Get the number of bytes
+    def GetPcdSize(self):
+        if self.DatumType in TAB_PCD_NUMERIC_TYPES:
+            return MAX_SIZE_TYPE[self.DatumType]
+        if not self.DefaultValue:
+            return 1
+        elif self.DefaultValue[0] == 'L':
+            return (len(self.DefaultValue) - 2) * 2
+        elif self.DefaultValue[0] == '{':
+            return len(self.DefaultValue.split(','))
+        else:
+            return len(self.DefaultValue) - 1
+
+
     ## Convert the class to a string
     #
     #  Convert each member of the class to string
@@ -114,25 +145,30 @@ class PcdClassObject(object):
 
 class StructurePcd(PcdClassObject):
     def __init__(self, StructuredPcdIncludeFile=None, Packages=None, Name=None, Guid=None, Type=None, DatumType=None, Value=None, Token=None, MaxDatumSize=None, SkuInfoList=None, IsOverrided=False, GuidValue=None, validateranges=None, validlists=None, expressions=None,default_store = TAB_DEFAULT_STORES_DEFAULT):
-        if SkuInfoList is None: SkuInfoList={}
-        if validateranges is None: validateranges=[]
-        if validlists is None: validlists=[]
-        if expressions is None : expressions=[]
-        if Packages is None : Packages = []
+        if SkuInfoList is None:
+            SkuInfoList = {}
+        if validateranges is None:
+            validateranges = []
+        if validlists is None:
+            validlists = []
+        if expressions is None:
+            expressions = []
+        if Packages is None:
+            Packages = []
         super(StructurePcd, self).__init__(Name, Guid, Type, DatumType, Value, Token, MaxDatumSize, SkuInfoList, IsOverrided, GuidValue, validateranges, validlists, expressions)
         self.StructuredPcdIncludeFile = [] if StructuredPcdIncludeFile is None else StructuredPcdIncludeFile
         self.PackageDecs = Packages
         self.DefaultStoreName = [default_store]
-        self.DefaultValues = collections.OrderedDict({})
+        self.DefaultValues = collections.OrderedDict()
         self.PcdMode = None
-        self.SkuOverrideValues = collections.OrderedDict({})
+        self.SkuOverrideValues = collections.OrderedDict()
         self.FlexibleFieldName = None
         self.StructName = None
         self.PcdDefineLineNo = 0
         self.PkgPath = ""
         self.DefaultValueFromDec = ""
-        self.ValueChain = dict()
-        self.PcdFieldValueFromComm = collections.OrderedDict({})
+        self.ValueChain = set()
+        self.PcdFieldValueFromComm = collections.OrderedDict()
     def __repr__(self):
         return self.TypeName
 
@@ -146,9 +182,9 @@ class StructurePcd(PcdClassObject):
         self.DefaultValueFromDec = DefaultValue
     def AddOverrideValue (self, FieldName, Value, SkuName, DefaultStoreName, FileName="", LineNo=0):
         if SkuName not in self.SkuOverrideValues:
-            self.SkuOverrideValues[SkuName] = collections.OrderedDict({})
+            self.SkuOverrideValues[SkuName] = collections.OrderedDict()
         if DefaultStoreName not in self.SkuOverrideValues[SkuName]:
-            self.SkuOverrideValues[SkuName][DefaultStoreName] = collections.OrderedDict({})
+            self.SkuOverrideValues[SkuName][DefaultStoreName] = collections.OrderedDict()
         if FieldName in self.SkuOverrideValues[SkuName][DefaultStoreName]:
             del self.SkuOverrideValues[SkuName][DefaultStoreName][FieldName]
         self.SkuOverrideValues[SkuName][DefaultStoreName][FieldName] = [Value.strip(), FileName, LineNo]

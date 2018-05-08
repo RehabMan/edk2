@@ -16,7 +16,7 @@ from Common.GlobalData import *
 from CommonDataClass.Exceptions import BadExpression
 from CommonDataClass.Exceptions import WrnExpression
 import uuid
-from Common.Expression import PcdPattern
+from Common.Expression import PcdPattern,BaseExpression
 from Common.DataType import *
 
 ERR_STRING_EXPR = 'This operator cannot be used in string expression: [%s].'
@@ -186,7 +186,7 @@ def GetOperatorObject(Operator):
     else:
         raise BadExpression("Bad Operator")
 
-class RangeExpression(object):
+class RangeExpression(BaseExpression):
     # Logical operator mapping
     LogicalOperators = {
         '&&' : 'and', '||' : 'or',
@@ -347,6 +347,7 @@ class RangeExpression(object):
 
 
     def __init__(self, Expression, PcdDataType, SymbolTable = {}):
+        super(RangeExpression, self).__init__(self, Expression, PcdDataType, SymbolTable)
         self._NoProcess = False
         if type(Expression) != type(''):
             self._Expr = Expression
@@ -415,9 +416,9 @@ class RangeExpression(object):
 
     # Template function to parse binary operators which have same precedence
     # Expr [Operator Expr]*
-    def _ExprFuncTemplate(self, EvalFunc, OpLst):
+    def _ExprFuncTemplate(self, EvalFunc, OpSet):
         Val = EvalFunc()
-        while self._IsOperator(OpLst):
+        while self._IsOperator(OpSet):
             Op = self._Token
             try:
                 Val = self.Eval(Op, Val, EvalFunc())
@@ -428,18 +429,18 @@ class RangeExpression(object):
 
     # A [|| B]*
     def _OrExpr(self):
-        return self._ExprFuncTemplate(self._AndExpr, ["OR", "or"])
+        return self._ExprFuncTemplate(self._AndExpr, {"OR", "or"})
 
     # A [&& B]*
     def _AndExpr(self):
-        return self._ExprFuncTemplate(self._NeExpr, ["AND", "and"])
+        return self._ExprFuncTemplate(self._NeExpr, {"AND", "and"})
 
     def _NeExpr(self):
         Val = self._RelExpr()
-        while self._IsOperator([ "!=", "NOT", "not"]):
+        while self._IsOperator({"!=", "NOT", "not"}):
             Op = self._Token
             if Op in ["!", "NOT", "not"]:
-                if not self._IsOperator(["IN", "in"]):
+                if not self._IsOperator({"IN", "in"}):
                     raise BadExpression(ERR_REL_NOT_IN)
                 Op += ' ' + self._Token
             try:
@@ -451,7 +452,7 @@ class RangeExpression(object):
 
     # [!]*A
     def _RelExpr(self):
-        if self._IsOperator(["NOT" , "LE", "GE", "LT", "GT", "EQ", "XOR"]):
+        if self._IsOperator({"NOT" , "LE", "GE", "LT", "GT", "EQ", "XOR"}):
             Token = self._Token
             Val = self._NeExpr()
             try:
@@ -693,25 +694,3 @@ class RangeExpression(object):
             raise BadExpression(ERR_OPERATOR_UNSUPPORT % OpToken)
         self._Token = OpToken
         return OpToken
-
-    # Check if current token matches the operators given from OpList
-    def _IsOperator(self, OpList):
-        Idx = self._Idx
-        self._GetOperator()
-        if self._Token in OpList:
-            if self._Token in self.LogicalOperators:
-                self._Token = self.LogicalOperators[self._Token]
-            return True
-        self._Idx = Idx
-        return False
-
-
-    
-    
-    
-    
-
-
-
-
-#    UTRangeList()

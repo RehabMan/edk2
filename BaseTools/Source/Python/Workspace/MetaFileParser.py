@@ -31,7 +31,7 @@ from Common.Misc import GuidStructureStringToGuidString, CheckPcdDatum, PathClas
 from Common.Expression import *
 from CommonDataClass.Exceptions import *
 from Common.LongFilePathSupport import OpenLongFilePath as open
-
+from collections import defaultdict
 from MetaFileTable import MetaFileStorage
 from MetaFileCommentParser import CheckInfComment
 
@@ -163,7 +163,7 @@ class MetaFileParser(object):
         self._FileDir = self.MetaFile.Dir
         self._Defines = {}
         self._FileLocalMacros = {}
-        self._SectionsMacroDict = {}
+        self._SectionsMacroDict = defaultdict(dict)
 
         # for recursive parsing
         self._Owner = [Owner]
@@ -310,7 +310,7 @@ class MetaFileParser(object):
             if self._SectionName in self.DataType:
                 self._SectionType = self.DataType[self._SectionName]
                 # Check if the section name is valid
-                if self._SectionName not in SECTIONS_HAVE_ITEM_AFTER_ARCH and len(ItemList) > 3:
+                if self._SectionName not in SECTIONS_HAVE_ITEM_AFTER_ARCH_SET and len(ItemList) > 3:
                     EdkLogger.error("Parser", FORMAT_UNKNOWN_ERROR, "%s is not a valid section name" % Item,
                                     self.MetaFile, self._LineIndex + 1, self._CurrentLine)
             elif self._Version >= 0x00010005:
@@ -328,7 +328,7 @@ class MetaFileParser(object):
 
             # S2 may be Platform or ModuleType
             if len(ItemList) > 2:
-                if self._SectionName.upper() in SECTIONS_HAVE_ITEM_PCD:
+                if self._SectionName.upper() in SECTIONS_HAVE_ITEM_PCD_SET:
                     S2 = ItemList[2]
                 else:
                     S2 = ItemList[2].upper()
@@ -421,17 +421,16 @@ class MetaFileParser(object):
     def _ConstructSectionMacroDict(self, Name, Value):
         ScopeKey = [(Scope[0], Scope[1],Scope[2]) for Scope in self._Scope]
         ScopeKey = tuple(ScopeKey)
-        SectionDictKey = self._SectionType, ScopeKey
         #
         # DecParser SectionType is a list, will contain more than one item only in Pcd Section
         # As Pcd section macro usage is not alllowed, so here it is safe
         #
         if type(self) == DecParser:
             SectionDictKey = self._SectionType[0], ScopeKey
-        if SectionDictKey not in self._SectionsMacroDict:
-            self._SectionsMacroDict[SectionDictKey] = {}
-        SectionLocalMacros = self._SectionsMacroDict[SectionDictKey]
-        SectionLocalMacros[Name] = Value
+        else:
+            SectionDictKey = self._SectionType, ScopeKey
+
+        self._SectionsMacroDict[SectionDictKey][Name] = Value
 
     ## Get section Macros that are applicable to current line, which may come from other sections 
     ## that share the same name while scope is wider
@@ -936,7 +935,7 @@ class DscParser(MetaFileParser):
                 self._SubsectionType = MODEL_UNKNOWN
                 self._SubsectionName = ''
                 self._Owner[-1] = -1
-                OwnerId = {}
+                OwnerId.clear()
                 continue
             # subsection header
             elif Line[0] == TAB_OPTION_START and Line[-1] == TAB_OPTION_END:
@@ -1296,7 +1295,7 @@ class DscParser(MetaFileParser):
         self._DirectiveEvalStack = []
         self._FileWithError = self.MetaFile
         self._FileLocalMacros = {}
-        self._SectionsMacroDict = {}
+        self._SectionsMacroDict.clear()
         GlobalData.gPlatformDefines = {}
 
         # Get all macro and PCD which has straitforward value
@@ -1543,7 +1542,7 @@ class DscParser(MetaFileParser):
 
             IncludedFileTable = MetaFileStorage(self._Table.Cur, IncludedFile1, MODEL_FILE_DSC, False)
             FromItem = self._Content[self._ContentIndex - 1][0]
-            if self._Content[self._ContentIndex - 1][8] != -1.0:
+            if self._InSubsection:
                 Owner = self._Content[self._ContentIndex - 1][8]
             else:
                 Owner = self._Content[self._ContentIndex - 1][0]

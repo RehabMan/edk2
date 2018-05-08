@@ -419,14 +419,14 @@ class WorkspaceAutoGen(AutoGen):
                         if BuildData.Pcds[key].Pending:
                             if key in Platform.Pcds:
                                 PcdInPlatform = Platform.Pcds[key]
-                                if PcdInPlatform.Type not in [None, '']:
+                                if PcdInPlatform.Type:
                                     BuildData.Pcds[key].Type = PcdInPlatform.Type
 
                             if BuildData.MetaFile in Platform.Modules:
                                 PlatformModule = Platform.Modules[str(BuildData.MetaFile)]
                                 if key in PlatformModule.Pcds:
                                     PcdInPlatform = PlatformModule.Pcds[key]
-                                    if PcdInPlatform.Type not in [None, '']:
+                                    if PcdInPlatform.Type:
                                         BuildData.Pcds[key].Type = PcdInPlatform.Type
 
                         if TAB_PCDS_DYNAMIC_EX in BuildData.Pcds[key].Type:
@@ -460,7 +460,7 @@ class WorkspaceAutoGen(AutoGen):
                             'build',
                             FORMAT_INVALID,
                             "Building modules from source INFs, following PCD use %s and %s access method. It must be corrected to use only one access method." % (i, j),
-                            ExtraData="%s" % '\n\t'.join([str(P[1]+'.'+P[0]) for P in Intersections])
+                            ExtraData="%s" % '\n\t'.join(str(P[1]+'.'+P[0]) for P in Intersections)
                             )
 
             #
@@ -507,8 +507,8 @@ class WorkspaceAutoGen(AutoGen):
                         if (BuildData.Pcds[key].TokenCName, BuildData.Pcds[key].TokenSpaceGuidCName) == SinglePcd:
                             for item in GlobalData.MixedPcd[SinglePcd]:
                                 Pcd_Type = item[0].split('_')[-1]
-                                if (Pcd_Type == BuildData.Pcds[key].Type) or (Pcd_Type == TAB_PCDS_DYNAMIC_EX and BuildData.Pcds[key].Type in GenC.gDynamicExPcd) or \
-                                   (Pcd_Type == TAB_PCDS_DYNAMIC and BuildData.Pcds[key].Type in GenC.gDynamicPcd):
+                                if (Pcd_Type == BuildData.Pcds[key].Type) or (Pcd_Type == TAB_PCDS_DYNAMIC_EX and BuildData.Pcds[key].Type in PCD_DYNAMIC_EX_TYPE_SET) or \
+                                   (Pcd_Type == TAB_PCDS_DYNAMIC and BuildData.Pcds[key].Type in PCD_DYNAMIC_TYPE_SET):
                                     Value = BuildData.Pcds[key]
                                     Value.TokenCName = BuildData.Pcds[key].TokenCName + '_' + Pcd_Type
                                     if len(key) == 2:
@@ -869,8 +869,8 @@ class WorkspaceAutoGen(AutoGen):
     def _CheckPcdDefineAndType(self):
         PcdTypeList = [
             TAB_PCDS_FIXED_AT_BUILD, TAB_PCDS_PATCHABLE_IN_MODULE, TAB_PCDS_FEATURE_FLAG,
-            TAB_PCDS_DYNAMIC, #"DynamicHii", "DynamicVpd",
-            TAB_PCDS_DYNAMIC_EX, # "DynamicExHii", "DynamicExVpd"
+            TAB_PCDS_DYNAMIC, #TAB_PCDS_DYNAMIC_HII, TAB_PCDS_DYNAMIC_VPD,
+            TAB_PCDS_DYNAMIC_EX, # TAB_PCDS_DYNAMIC_EX_HII, TAB_PCDS_DYNAMIC_EX_VPD
         ]
 
         # This dict store PCDs which are not used by any modules with specified arches
@@ -922,7 +922,7 @@ class WorkspaceAutoGen(AutoGen):
     ## Return the directory to store FV files
     def _GetFvDir(self):
         if self._FvDir is None:
-            self._FvDir = path.join(self.BuildDir, 'FV')
+            self._FvDir = path.join(self.BuildDir, TAB_FV_DIRECTORY)
         return self._FvDir
 
     ## Return the directory to store all intermediate and final files built
@@ -1325,7 +1325,7 @@ class PlatformAutoGen(AutoGen):
 
     def UpdateNVStoreMaxSize(self,OrgVpdFile):
         if self.VariableInfo:
-            VpdMapFilePath = os.path.join(self.BuildDir, "FV", "%s.map" % self.Platform.VpdToolGuid)
+            VpdMapFilePath = os.path.join(self.BuildDir, TAB_FV_DIRECTORY, "%s.map" % self.Platform.VpdToolGuid)
             PcdNvStoreDfBuffer = [item for item in self._DynamicPcdList if item.TokenCName == "PcdNvStoreDefaultValueBuffer" and item.TokenSpaceGuidCName == "gEfiMdeModulePkgTokenSpaceGuid"]
 
             if PcdNvStoreDfBuffer:
@@ -1362,8 +1362,8 @@ class PlatformAutoGen(AutoGen):
                 if (self.Platform.Pcds[key].TokenCName, self.Platform.Pcds[key].TokenSpaceGuidCName) == SinglePcd:
                     for item in GlobalData.MixedPcd[SinglePcd]:
                         Pcd_Type = item[0].split('_')[-1]
-                        if (Pcd_Type == self.Platform.Pcds[key].Type) or (Pcd_Type == TAB_PCDS_DYNAMIC_EX and self.Platform.Pcds[key].Type in GenC.gDynamicExPcd) or \
-                           (Pcd_Type == TAB_PCDS_DYNAMIC and self.Platform.Pcds[key].Type in GenC.gDynamicPcd):
+                        if (Pcd_Type == self.Platform.Pcds[key].Type) or (Pcd_Type == TAB_PCDS_DYNAMIC_EX and self.Platform.Pcds[key].Type in PCD_DYNAMIC_EX_TYPE_SET) or \
+                           (Pcd_Type == TAB_PCDS_DYNAMIC and self.Platform.Pcds[key].Type in PCD_DYNAMIC_TYPE_SET):
                             Value = self.Platform.Pcds[key]
                             Value.TokenCName = self.Platform.Pcds[key].TokenCName + '_' + Pcd_Type
                             if len(key) == 2:
@@ -1393,7 +1393,7 @@ class PlatformAutoGen(AutoGen):
 
             for PcdFromModule in M.ModulePcdList + M.LibraryPcdList:
                 # make sure that the "VOID*" kind of datum has MaxDatumSize set
-                if PcdFromModule.DatumType == TAB_VOID and PcdFromModule.MaxDatumSize in [None, '']:
+                if PcdFromModule.DatumType == TAB_VOID and not PcdFromModule.MaxDatumSize:
                     NoDatumTypePcdList.add("%s.%s [%s]" % (PcdFromModule.TokenSpaceGuidCName, PcdFromModule.TokenCName, F))
 
                 # Check the PCD from Binary INF or Source INF
@@ -1403,7 +1403,7 @@ class PlatformAutoGen(AutoGen):
                 # Check the PCD from DSC or not 
                 PcdFromModule.IsFromDsc = (PcdFromModule.TokenCName, PcdFromModule.TokenSpaceGuidCName) in self.Platform.Pcds
 
-                if PcdFromModule.Type in GenC.gDynamicPcd or PcdFromModule.Type in GenC.gDynamicExPcd:
+                if PcdFromModule.Type in PCD_DYNAMIC_TYPE_SET or PcdFromModule.Type in PCD_DYNAMIC_EX_TYPE_SET:
                     if F.Path not in FdfModuleList:
                         # If one of the Source built modules listed in the DSC is not listed 
                         # in FDF modules, and the INF lists a PCD can only use the PcdsDynamic 
@@ -1413,7 +1413,7 @@ class PlatformAutoGen(AutoGen):
                         # be included in a flash image in order to be functional. These Dynamic 
                         # PCD will not be added into the Database unless it is used by other 
                         # modules that are included in the FDF file.
-                        if PcdFromModule.Type in GenC.gDynamicPcd and \
+                        if PcdFromModule.Type in PCD_DYNAMIC_TYPE_SET and \
                             PcdFromModule.IsFromBinaryInf == False:
                             # Print warning message to let the developer make a determine.
                             continue
@@ -1422,7 +1422,7 @@ class PlatformAutoGen(AutoGen):
                         # access method (it is only listed in the DEC file that declares the 
                         # PCD as PcdsDynamicEx), then DO NOT break the build; DO NOT add the 
                         # PCD to the Platform's PCD Database.
-                        if PcdFromModule.Type in GenC.gDynamicExPcd:
+                        if PcdFromModule.Type in PCD_DYNAMIC_EX_TYPE_SET:
                             continue
                     #
                     # If a dynamic PCD used by a PEM module/PEI module & DXE module,
@@ -1430,7 +1430,7 @@ class PlatformAutoGen(AutoGen):
                     # used by DXE module, it should be stored in DXE PCD database.
                     # The default Phase is DXE
                     #
-                    if M.ModuleType in ["PEIM", "PEI_CORE"]:
+                    if M.ModuleType in SUP_MODULE_SET_PEI:
                         PcdFromModule.Phase = "PEI"
                     if PcdFromModule not in self._DynaPcdList_:
                         self._DynaPcdList_.append(PcdFromModule)
@@ -1464,21 +1464,21 @@ class PlatformAutoGen(AutoGen):
                     PcdFromModule.IsFromBinaryInf = True
                     PcdFromModule.IsFromDsc = False
                     # Only allow the DynamicEx and Patchable PCD in AsBuild INF
-                    if PcdFromModule.Type not in GenC.gDynamicExPcd and PcdFromModule.Type not in TAB_PCDS_PATCHABLE_IN_MODULE:
+                    if PcdFromModule.Type not in PCD_DYNAMIC_EX_TYPE_SET and PcdFromModule.Type not in TAB_PCDS_PATCHABLE_IN_MODULE:
                         EdkLogger.error("build", AUTOGEN_ERROR, "PCD setting error",
                                         File=self.MetaFile,
                                         ExtraData="\n\tExisted %s PCD %s in:\n\t\t%s\n"
                                         % (PcdFromModule.Type, PcdFromModule.TokenCName, InfName))
                     # make sure that the "VOID*" kind of datum has MaxDatumSize set
-                    if PcdFromModule.DatumType == TAB_VOID and PcdFromModule.MaxDatumSize in [None, '']:
+                    if PcdFromModule.DatumType == TAB_VOID and not PcdFromModule.MaxDatumSize:
                         NoDatumTypePcdList.add("%s.%s [%s]" % (PcdFromModule.TokenSpaceGuidCName, PcdFromModule.TokenCName, InfName))
-                    if M.ModuleType in ["PEIM", "PEI_CORE"]:
+                    if M.ModuleType in SUP_MODULE_SET_PEI:
                         PcdFromModule.Phase = "PEI"
-                    if PcdFromModule not in self._DynaPcdList_ and PcdFromModule.Type in GenC.gDynamicExPcd:
+                    if PcdFromModule not in self._DynaPcdList_ and PcdFromModule.Type in PCD_DYNAMIC_EX_TYPE_SET:
                         self._DynaPcdList_.append(PcdFromModule)
                     elif PcdFromModule not in self._NonDynaPcdList_ and PcdFromModule.Type in TAB_PCDS_PATCHABLE_IN_MODULE:
                         self._NonDynaPcdList_.append(PcdFromModule)
-                    if PcdFromModule in self._DynaPcdList_ and PcdFromModule.Phase == 'PEI' and PcdFromModule.Type in GenC.gDynamicExPcd:
+                    if PcdFromModule in self._DynaPcdList_ and PcdFromModule.Phase == 'PEI' and PcdFromModule.Type in PCD_DYNAMIC_EX_TYPE_SET:
                         # Overwrite the phase of any the same PCD existing, if Phase is PEI.
                         # It is to solve the case that a dynamic PCD used by a PEM module/PEI 
                         # module & DXE module at a same time.
@@ -1718,7 +1718,7 @@ class PlatformAutoGen(AutoGen):
 
                 # Process VPD map file generated by third party BPDG tool
                 if NeedProcessVpdMapFile:
-                    VpdMapFilePath = os.path.join(self.BuildDir, "FV", "%s.map" % self.Platform.VpdToolGuid)
+                    VpdMapFilePath = os.path.join(self.BuildDir, TAB_FV_DIRECTORY, "%s.map" % self.Platform.VpdToolGuid)
                     if os.path.exists(VpdMapFilePath):
                         VpdFile.Read(VpdMapFilePath)
 
@@ -1769,7 +1769,7 @@ class PlatformAutoGen(AutoGen):
         self.AllPcdList = self._NonDynamicPcdList + self._DynamicPcdList
 
     def FixVpdOffset(self,VpdFile ):
-        FvPath = os.path.join(self.BuildDir, "FV")
+        FvPath = os.path.join(self.BuildDir, TAB_FV_DIRECTORY)
         if not os.path.exists(FvPath):
             try:
                 os.makedirs(FvPath)
@@ -1782,7 +1782,7 @@ class PlatformAutoGen(AutoGen):
             # retrieve BPDG tool's path from tool_def.txt according to VPD_TOOL_GUID defined in DSC file.
             BPDGToolName = None
             for ToolDef in self.ToolDefinition.values():
-                if ToolDef.has_key("GUID") and ToolDef["GUID"] == self.Platform.VpdToolGuid:
+                if ToolDef.has_key(TAB_GUID) and ToolDef[TAB_GUID] == self.Platform.VpdToolGuid:
                     if not ToolDef.has_key("PATH"):
                         EdkLogger.error("build", ATTRIBUTE_NOT_AVAILABLE, "PATH attribute was not provided for BPDG guid tool %s in tools_def.txt" % self.Platform.VpdToolGuid)
                     BPDGToolName = ToolDef["PATH"]
@@ -1998,7 +1998,7 @@ class PlatformAutoGen(AutoGen):
             BuildRuleFile = None
             if TAB_TAT_DEFINES_BUILD_RULE_CONF in self.Workspace.TargetTxt.TargetTxtDictionary:
                 BuildRuleFile = self.Workspace.TargetTxt.TargetTxtDictionary[TAB_TAT_DEFINES_BUILD_RULE_CONF]
-            if BuildRuleFile in [None, '']:
+            if not BuildRuleFile:
                 BuildRuleFile = gDefaultBuildRuleFile
             self._BuildRule = BuildRule(BuildRuleFile)
             if self._BuildRule._FileVersion == "":
@@ -2065,28 +2065,28 @@ class PlatformAutoGen(AutoGen):
             #
             for Pcd in self.DynamicPcdList:
                 if Pcd.Phase == "PEI":
-                    if Pcd.Type in [TAB_PCDS_DYNAMIC, "DynamicDefault", "DynamicVpd", "DynamicHii"]:
+                    if Pcd.Type in PCD_DYNAMIC_TYPE_SET:
                         EdkLogger.debug(EdkLogger.DEBUG_5, "%s %s (%s) -> %d" % (Pcd.TokenCName, Pcd.TokenSpaceGuidCName, Pcd.Phase, TokenNumber))
                         self._PcdTokenNumber[Pcd.TokenCName, Pcd.TokenSpaceGuidCName] = TokenNumber
                         TokenNumber += 1
 
             for Pcd in self.DynamicPcdList:
                 if Pcd.Phase == "PEI":
-                    if Pcd.Type in [TAB_PCDS_DYNAMIC_EX, "DynamicExDefault", "DynamicExVpd", "DynamicExHii"]:
+                    if Pcd.Type in PCD_DYNAMIC_EX_TYPE_SET:
                         EdkLogger.debug(EdkLogger.DEBUG_5, "%s %s (%s) -> %d" % (Pcd.TokenCName, Pcd.TokenSpaceGuidCName, Pcd.Phase, TokenNumber))
                         self._PcdTokenNumber[Pcd.TokenCName, Pcd.TokenSpaceGuidCName] = TokenNumber
                         TokenNumber += 1
 
             for Pcd in self.DynamicPcdList:
                 if Pcd.Phase == "DXE":
-                    if Pcd.Type in [TAB_PCDS_DYNAMIC, "DynamicDefault", "DynamicVpd", "DynamicHii"]:
+                    if Pcd.Type in PCD_DYNAMIC_TYPE_SET:
                         EdkLogger.debug(EdkLogger.DEBUG_5, "%s %s (%s) -> %d" % (Pcd.TokenCName, Pcd.TokenSpaceGuidCName, Pcd.Phase, TokenNumber))
                         self._PcdTokenNumber[Pcd.TokenCName, Pcd.TokenSpaceGuidCName] = TokenNumber
                         TokenNumber += 1
 
             for Pcd in self.DynamicPcdList:
                 if Pcd.Phase == "DXE":
-                    if Pcd.Type in [TAB_PCDS_DYNAMIC_EX, "DynamicExDefault", "DynamicExVpd", "DynamicExHii"]:
+                    if Pcd.Type in PCD_DYNAMIC_EX_TYPE_SET:
                         EdkLogger.debug(EdkLogger.DEBUG_5, "%s %s (%s) -> %d" % (Pcd.TokenCName, Pcd.TokenSpaceGuidCName, Pcd.Phase, TokenNumber))
                         self._PcdTokenNumber[Pcd.TokenCName, Pcd.TokenSpaceGuidCName] = TokenNumber
                         TokenNumber += 1
@@ -2203,7 +2203,7 @@ class PlatformAutoGen(AutoGen):
                         LibraryModule.LibraryClass.append(LibraryClassObject(LibraryClassName, [ModuleType]))
                     elif LibraryModule.LibraryClass is None \
                          or len(LibraryModule.LibraryClass) == 0 \
-                         or (ModuleType != 'USER_DEFINED'
+                         or (ModuleType != SUP_MODULE_USER_DEFINED
                              and ModuleType not in LibraryModule.LibraryClass[0].SupModList):
                         # only USER_DEFINED can link against any library instance despite of its SupModList
                         EdkLogger.error("build", OPTION_MISSING,
@@ -2295,7 +2295,7 @@ class PlatformAutoGen(AutoGen):
         #
         for Item in LibraryList:
             if ConsumedByList[Item] != [] and Item in Constructor and len(Constructor) > 1:
-                ErrorMessage = "\tconsumed by " + "\n\tconsumed by ".join([str(L) for L in ConsumedByList[Item]])
+                ErrorMessage = "\tconsumed by " + "\n\tconsumed by ".join(str(L) for L in ConsumedByList[Item])
                 EdkLogger.error("build", BUILD_ERROR, 'Library [%s] with constructors has a cycle' % str(Item),
                                 ExtraData=ErrorMessage, File=self.MetaFile)
             if Item not in SortedLibraryList:
@@ -2326,13 +2326,13 @@ class PlatformAutoGen(AutoGen):
                 TokenCName = PcdItem[0]
                 break
         if FromPcd is not None:
-            if ToPcd.Pending and FromPcd.Type not in [None, '']:
+            if ToPcd.Pending and FromPcd.Type:
                 ToPcd.Type = FromPcd.Type
-            elif (ToPcd.Type not in [None, '']) and (FromPcd.Type not in [None, ''])\
+            elif (ToPcd.Type) and (FromPcd.Type)\
                 and (ToPcd.Type != FromPcd.Type) and (ToPcd.Type in FromPcd.Type):
                 if ToPcd.Type.strip() == TAB_PCDS_DYNAMIC_EX:
                     ToPcd.Type = FromPcd.Type
-            elif ToPcd.Type not in [None, ''] and FromPcd.Type not in [None, ''] \
+            elif ToPcd.Type and FromPcd.Type \
                 and ToPcd.Type != FromPcd.Type:
                 EdkLogger.error("build", OPTION_CONFLICT, "Mismatched PCD type",
                                 ExtraData="%s.%s is defined as [%s] in module %s, but as [%s] in platform."\
@@ -2368,11 +2368,11 @@ class PlatformAutoGen(AutoGen):
             ToPcd.validlists = FromPcd.validlists
             ToPcd.expressions = FromPcd.expressions
 
-        if FromPcd is not None and ToPcd.DatumType == TAB_VOID and ToPcd.MaxDatumSize in ['', None]:
+        if FromPcd is not None and ToPcd.DatumType == TAB_VOID and not ToPcd.MaxDatumSize:
             EdkLogger.debug(EdkLogger.DEBUG_9, "No MaxDatumSize specified for PCD %s.%s" \
                             % (ToPcd.TokenSpaceGuidCName, TokenCName))
             Value = ToPcd.DefaultValue
-            if Value in [None, '']:
+            if not Value:
                 ToPcd.MaxDatumSize = '1'
             elif Value[0] == 'L':
                 ToPcd.MaxDatumSize = str((len(Value) - 2) * 2)
@@ -2382,8 +2382,8 @@ class PlatformAutoGen(AutoGen):
                 ToPcd.MaxDatumSize = str(len(Value) - 1)
 
         # apply default SKU for dynamic PCDS if specified one is not available
-        if (ToPcd.Type in PCD_DYNAMIC_TYPE_LIST or ToPcd.Type in PCD_DYNAMIC_EX_TYPE_LIST) \
-            and ToPcd.SkuInfoList in [None, {}, '']:
+        if (ToPcd.Type in PCD_DYNAMIC_TYPE_SET or ToPcd.Type in PCD_DYNAMIC_EX_TYPE_SET) \
+            and not ToPcd.SkuInfoList:
             if self.Platform.SkuName in self.Platform.SkuIds:
                 SkuName = self.Platform.SkuName
             else:
@@ -2415,7 +2415,7 @@ class PlatformAutoGen(AutoGen):
                 if Sku.VariableGuid == '': continue
                 Sku.VariableGuidValue = GuidValue(Sku.VariableGuid, self.PackageList, self.MetaFile.Path)
                 if Sku.VariableGuidValue is None:
-                    PackageList = "\n\t".join([str(P) for P in self.PackageList])
+                    PackageList = "\n\t".join(str(P) for P in self.PackageList)
                     EdkLogger.error(
                                 'build',
                                 RESOURCE_NOT_AVAILABLE,
@@ -2444,10 +2444,10 @@ class PlatformAutoGen(AutoGen):
         # use PCD value to calculate the MaxDatumSize when it is not specified
         for Name, Guid in Pcds:
             Pcd = Pcds[Name, Guid]
-            if Pcd.DatumType == TAB_VOID and Pcd.MaxDatumSize in ['', None]:
+            if Pcd.DatumType == TAB_VOID and not Pcd.MaxDatumSize:
                 Pcd.MaxSizeUserSet = None
                 Value = Pcd.DefaultValue
-                if Value in [None, '']:
+                if not Value:
                     Pcd.MaxDatumSize = '1'
                 elif Value[0] == 'L':
                     Pcd.MaxDatumSize = str((len(Value) - 2) * 2)
@@ -3031,7 +3031,7 @@ class ModuleAutoGen(AutoGen):
     def _GetFfsOutputDir(self):
         if self._FfsOutputDir is None:
             if GlobalData.gFdfParser is not None:
-                self._FfsOutputDir = path.join(self.PlatformInfo.BuildDir, "FV", "Ffs", self.Guid + self.Name)
+                self._FfsOutputDir = path.join(self.PlatformInfo.BuildDir, TAB_FV_DIRECTORY, "Ffs", self.Guid + self.Name)
             else:
                 self._FfsOutputDir = ''
         return self._FfsOutputDir
@@ -3122,7 +3122,7 @@ class ModuleAutoGen(AutoGen):
             for Depex in DepexList:
                 for key in Depex:
                     DepexStr += '[Depex.%s.%s]\n' % key
-                    DepexStr += '\n'.join(['# '+ val for val in Depex[key]])
+                    DepexStr += '\n'.join('# '+ val for val in Depex[key])
                     DepexStr += '\n\n'
             if not DepexStr:
                 return '[Depex.%s]\n' % self.Arch
@@ -3136,7 +3136,7 @@ class ModuleAutoGen(AutoGen):
                 DepexStr += ' AND '
             DepexStr += '('
             for D in Depex.values():
-                DepexStr += ' '.join([val for val in D])
+                DepexStr += ' '.join(val for val in D)
             Index = DepexStr.find('END')
             if Index > -1 and Index == len(DepexStr) - 3:
                 DepexStr = DepexStr[:-3]
@@ -3931,7 +3931,7 @@ class ModuleAutoGen(AutoGen):
             if Pcd.Type == TAB_PCDS_PATCHABLE_IN_MODULE:
                 PatchablePcds += [Pcd]
                 PcdCheckList.append((Pcd.TokenCName, Pcd.TokenSpaceGuidCName, TAB_PCDS_PATCHABLE_IN_MODULE))
-            elif Pcd.Type in GenC.gDynamicExPcd:
+            elif Pcd.Type in PCD_DYNAMIC_EX_TYPE_SET:
                 if Pcd not in Pcds:
                     Pcds += [Pcd]
                     PcdCheckList.append((Pcd.TokenCName, Pcd.TokenSpaceGuidCName, TAB_PCDS_DYNAMIC_EX))
@@ -3969,8 +3969,8 @@ class ModuleAutoGen(AutoGen):
                     break
 
         ModuleType = self.ModuleType
-        if ModuleType == 'UEFI_DRIVER' and self.DepexGenerated:
-            ModuleType = 'DXE_DRIVER'
+        if ModuleType == SUP_MODULE_UEFI_DRIVER and self.DepexGenerated:
+            ModuleType = SUP_MODULE_DXE_DRIVER
 
         DriverType = ''
         if self.PcdIsDriver != '':
@@ -4047,11 +4047,11 @@ class ModuleAutoGen(AutoGen):
                 AsBuiltInfDict['binary_item'] += ['BIN|' + File]
         if self.DepexGenerated:
             self.OutputFile.add(self.Name + '.depex')
-            if self.ModuleType in ['PEIM']:
+            if self.ModuleType in [SUP_MODULE_PEIM]:
                 AsBuiltInfDict['binary_item'] += ['PEI_DEPEX|' + self.Name + '.depex']
-            if self.ModuleType in ['DXE_DRIVER', 'DXE_RUNTIME_DRIVER', 'DXE_SAL_DRIVER', 'UEFI_DRIVER']:
+            if self.ModuleType in [SUP_MODULE_DXE_DRIVER, SUP_MODULE_DXE_RUNTIME_DRIVER, SUP_MODULE_DXE_SAL_DRIVER, SUP_MODULE_UEFI_DRIVER]:
                 AsBuiltInfDict['binary_item'] += ['DXE_DEPEX|' + self.Name + '.depex']
-            if self.ModuleType in ['DXE_SMM_DRIVER']:
+            if self.ModuleType in [SUP_MODULE_DXE_SMM_DRIVER]:
                 AsBuiltInfDict['binary_item'] += ['SMM_DEPEX|' + self.Name + '.depex']
 
         Bin = self._GenOffsetBin()
@@ -4377,8 +4377,8 @@ class ModuleAutoGen(AutoGen):
             return
 
         for ModuleType in self.DepexList:
-            # Ignore empty [depex] section or [depex] section for "USER_DEFINED" module
-            if len(self.DepexList[ModuleType]) == 0 or ModuleType == "USER_DEFINED":
+            # Ignore empty [depex] section or [depex] section for SUP_MODULE_USER_DEFINED module
+            if len(self.DepexList[ModuleType]) == 0 or ModuleType == SUP_MODULE_USER_DEFINED:
                 continue
 
             Dpx = GenDepex.DependencyExpression(self.DepexList[ModuleType], ModuleType, True)

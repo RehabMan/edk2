@@ -26,11 +26,11 @@ import FfsFileStatement
 from GenFdsGlobalVariable import GenFdsGlobalVariable
 from GenFds import GenFds
 from CommonDataClass.FdfClass import FvClassObject
-from Common.Misc import SaveFileOnChange
+from Common.Misc import SaveFileOnChange, PackGUID
 from Common.LongFilePathSupport import CopyLongFilePath
 from Common.LongFilePathSupport import OpenLongFilePath as open
+from Common.DataType import *
 
-T_CHAR_LF = '\n'
 FV_UI_EXT_ENTY_GUID = 'A67DF1FA-8DE8-4E98-AF09-4BDF2EFFBC7C'
 
 ## generate FV
@@ -80,7 +80,7 @@ class FV (FvClassObject):
         if self.CapsuleName is not None:
             for FdObj in GenFdsGlobalVariable.FdfParser.Profile.FdDict.values():
                 for RegionObj in FdObj.RegionList:
-                    if RegionObj.RegionType == 'FV':
+                    if RegionObj.RegionType == BINARY_FILE_TYPE_FV:
                         for RegionData in RegionObj.RegionDataList:
                             if RegionData.endswith(".fv"):
                                 continue
@@ -111,7 +111,7 @@ class FV (FvClassObject):
             if not Flag:
                 self.FvInfFile.writelines("EFI_FILE_NAME = " + \
                                             FileName          + \
-                                            T_CHAR_LF)
+                                            TAB_LINE_BREAK)
 
         # Process Modules in FfsList
         for FfsFile in self.FfsList :
@@ -125,7 +125,7 @@ class FV (FvClassObject):
             if not Flag:
                 self.FvInfFile.writelines("EFI_FILE_NAME = " + \
                                             FileName          + \
-                                            T_CHAR_LF)
+                                            TAB_LINE_BREAK)
         if not Flag:
             SaveFileOnChange(self.InfFileName, self.FvInfFile.getvalue(), False)
             self.FvInfFile.close()
@@ -236,7 +236,7 @@ class FV (FvClassObject):
 
         for FdObj in GenFdsGlobalVariable.FdfParser.Profile.FdDict.values():
             for RegionObj in FdObj.RegionList:
-                if RegionObj.RegionType != 'FV':
+                if RegionObj.RegionType != BINARY_FILE_TYPE_FV:
                     continue
                 for RegionData in RegionObj.RegionDataList:
                     #
@@ -270,36 +270,36 @@ class FV (FvClassObject):
         #
         # Add [Options]
         #
-        self.FvInfFile.writelines("[options]" + T_CHAR_LF)
+        self.FvInfFile.writelines("[options]" + TAB_LINE_BREAK)
         if BaseAddress is not None :
             self.FvInfFile.writelines("EFI_BASE_ADDRESS = " + \
                                        BaseAddress          + \
-                                       T_CHAR_LF)
+                                       TAB_LINE_BREAK)
 
         if BlockSize is not None:
             self.FvInfFile.writelines("EFI_BLOCK_SIZE = " + \
                                       '0x%X' %BlockSize    + \
-                                      T_CHAR_LF)
+                                      TAB_LINE_BREAK)
             if BlockNum is not None:
                 self.FvInfFile.writelines("EFI_NUM_BLOCKS   = "  + \
                                       ' 0x%X' %BlockNum    + \
-                                      T_CHAR_LF)
+                                      TAB_LINE_BREAK)
         else:
             if self.BlockSizeList == []:
                 if not self._GetBlockSize():
                     #set default block size is 1
-                    self.FvInfFile.writelines("EFI_BLOCK_SIZE  = 0x1" + T_CHAR_LF)
+                    self.FvInfFile.writelines("EFI_BLOCK_SIZE  = 0x1" + TAB_LINE_BREAK)
             
             for BlockSize in self.BlockSizeList :
                 if BlockSize[0] is not None:
                     self.FvInfFile.writelines("EFI_BLOCK_SIZE  = "  + \
                                           '0x%X' %BlockSize[0]    + \
-                                          T_CHAR_LF)
+                                          TAB_LINE_BREAK)
 
                 if BlockSize[1] is not None:
                     self.FvInfFile.writelines("EFI_NUM_BLOCKS   = "  + \
                                           ' 0x%X' %BlockSize[1]    + \
-                                          T_CHAR_LF)
+                                          TAB_LINE_BREAK)
 
         if self.BsBaseAddress is not None:
             self.FvInfFile.writelines('EFI_BOOT_DRIVER_BASE_ADDRESS = ' + \
@@ -310,11 +310,11 @@ class FV (FvClassObject):
         #
         # Add attribute
         #
-        self.FvInfFile.writelines("[attributes]" + T_CHAR_LF)
+        self.FvInfFile.writelines("[attributes]" + TAB_LINE_BREAK)
 
         self.FvInfFile.writelines("EFI_ERASE_POLARITY   = "       + \
                                           ' %s' %ErasePloarity    + \
-                                          T_CHAR_LF)
+                                          TAB_LINE_BREAK)
         if not (self.FvAttributeDict is None):
             for FvAttribute in self.FvAttributeDict.keys() :
                 if FvAttribute == "FvUsedSizeEnable":
@@ -325,12 +325,12 @@ class FV (FvClassObject):
                                           FvAttribute       + \
                                           ' = '             + \
                                           self.FvAttributeDict[FvAttribute] + \
-                                          T_CHAR_LF )
+                                          TAB_LINE_BREAK )
         if self.FvAlignment is not None:
             self.FvInfFile.writelines("EFI_FVB2_ALIGNMENT_"     + \
                                        self.FvAlignment.strip() + \
                                        " = TRUE"                + \
-                                       T_CHAR_LF)
+                                       TAB_LINE_BREAK)
                                        
         #
         # Generate FV extension header file
@@ -366,10 +366,7 @@ class FV (FvClassObject):
                 #   FV UI name
                 #
                 Buffer += (pack('HH', (FvUiLen + 16 + 4), 0x0002)
-                           + pack('=LHHBBBBBBBB', int(Guid[0], 16), int(Guid[1], 16), int(Guid[2], 16),
-                                  int(Guid[3][-4:-2], 16), int(Guid[3][-2:], 16), int(Guid[4][-12:-10], 16),
-                                  int(Guid[4][-10:-8], 16), int(Guid[4][-8:-6], 16), int(Guid[4][-6:-4], 16),
-                                  int(Guid[4][-4:-2], 16), int(Guid[4][-2:], 16))
+                           + PackGUID(Guid)
                            + self.UiFvName)
 
             for Index in range (0, len(self.FvExtEntryType)):
@@ -403,20 +400,7 @@ class FV (FvClassObject):
                         Buffer += pack('B', int(ByteList[Index1], 16))
 
             Guid = self.FvNameGuid.split('-')
-            Buffer = pack('=LHHBBBBBBBBL', 
-                        int(Guid[0], 16), 
-                        int(Guid[1], 16), 
-                        int(Guid[2], 16), 
-                        int(Guid[3][-4:-2], 16), 
-                        int(Guid[3][-2:], 16),  
-                        int(Guid[4][-12:-10], 16),
-                        int(Guid[4][-10:-8], 16),
-                        int(Guid[4][-8:-6], 16),
-                        int(Guid[4][-6:-4], 16),
-                        int(Guid[4][-4:-2], 16),
-                        int(Guid[4][-2:], 16),
-                        TotalSize
-                        ) + Buffer
+            Buffer = PackGUID(Guid) + pack('=L', TotalSize) + Buffer
 
             #
             # Generate FV extension header file if the total size is not zero
@@ -432,14 +416,14 @@ class FV (FvClassObject):
                     os.remove (self.InfFileName)
                 self.FvInfFile.writelines("EFI_FV_EXT_HEADER_FILE_NAME = "      + \
                                            FvExtHeaderFileName                  + \
-                                           T_CHAR_LF)
+                                           TAB_LINE_BREAK)
 
          
         #
         # Add [Files]
         #
-        self.FvInfFile.writelines("[files]" + T_CHAR_LF)
+        self.FvInfFile.writelines("[files]" + TAB_LINE_BREAK)
         if VtfDict and self.UiFvName in VtfDict:
             self.FvInfFile.writelines("EFI_FILE_NAME = "                   + \
                                        VtfDict[self.UiFvName]              + \
-                                       T_CHAR_LF)
+                                       TAB_LINE_BREAK)

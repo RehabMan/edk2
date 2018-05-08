@@ -118,8 +118,6 @@ LangConvTable = {'eng':'en', 'fra':'fr', \
 # @retval LangName:  Valid lanugage code in RFC 4646 format or None
 #
 def GetLanguageCode(LangName, IsCompatibleMode, File):
-    global LangConvTable
-
     length = len(LangName)
     if IsCompatibleMode:
         if length == 3 and LangName.isalpha():
@@ -218,6 +216,19 @@ class StringDefClassObject(object):
             self.StringValueByteList = UniToHexList(self.StringValue)
             self.Length = len(self.StringValueByteList)
 
+def StripComments(Line):
+    Comment = u'//'
+    CommentPos = Line.find(Comment)
+    while CommentPos >= 0:
+    # if there are non matched quotes before the comment header
+    # then we are in the middle of a string
+    # but we need to ignore the escaped quotes and backslashes.
+        if ((Line.count(u'"', 0, CommentPos) - Line.count(u'\\"', 0, CommentPos)) & 1) == 1:
+            CommentPos = Line.find (Comment, CommentPos + 1)
+        else:
+            return Line[:CommentPos].strip()
+    return Line.strip()
+
 ## UniFileClassObject
 #
 # A structure for .uni file definition
@@ -242,7 +253,7 @@ class UniFileClassObject(object):
         Lang = distutils.util.split_quoted((Line.split(u"//")[0]))
         if len(Lang) != 3:
             try:
-                FileIn = self.OpenUniFile(LongFilePath(File.Path))
+                FileIn = UniFileClassObject.OpenUniFile(LongFilePath(File.Path))
             except UnicodeError, X:
                 EdkLogger.error("build", FILE_READ_FAILURE, "File read failure: %s" % str(X), ExtraData=File);
             except:
@@ -286,7 +297,8 @@ class UniFileClassObject(object):
                     self.OrderedStringDict[LangName][Item.StringName] = len(self.OrderedStringList[LangName]) - 1
         return True
 
-    def OpenUniFile(self, FileName):
+    @staticmethod
+    def OpenUniFile(FileName):
         #
         # Read file
         #
@@ -305,14 +317,15 @@ class UniFileClassObject(object):
             FileIn.startswith(codecs.BOM_UTF16_LE)):
             Encoding = 'utf-16'
 
-        self.VerifyUcs2Data(FileIn, FileName, Encoding)
+        UniFileClassObject.VerifyUcs2Data(FileIn, FileName, Encoding)
 
         UniFile = StringIO.StringIO(FileIn)
         Info = codecs.lookup(Encoding)
         (Reader, Writer) = (Info.streamreader, Info.streamwriter)
         return codecs.StreamReaderWriter(UniFile, Reader, Writer)
 
-    def VerifyUcs2Data(self, FileIn, FileName, Encoding):
+    @staticmethod
+    def VerifyUcs2Data(FileIn, FileName, Encoding):
         Ucs2Info = codecs.lookup('ucs-2')
         #
         # Convert to unicode
@@ -371,20 +384,6 @@ class UniFileClassObject(object):
         FileName = Item[Item.find(u'#include ') + len(u'#include ') :Item.find(u' ', len(u'#include '))][1:-1]
         self.LoadUniFile(FileName)
 
-    def StripComments(self, Line):
-        Comment = u'//'
-        CommentPos = Line.find(Comment)
-        while CommentPos >= 0:
-        # if there are non matched quotes before the comment header
-        # then we are in the middle of a string
-        # but we need to ignore the escaped quotes and backslashes.
-            if ((Line.count(u'"', 0, CommentPos) - Line.count(u'\\"', 0, CommentPos)) & 1) == 1:
-                CommentPos = Line.find (Comment, CommentPos + 1)
-            else:
-                return Line[:CommentPos].strip()
-        return Line.strip()
-                
-
     #
     # Pre-process before parse .uni file
     #
@@ -393,7 +392,7 @@ class UniFileClassObject(object):
             EdkLogger.error("Unicode File Parser", FILE_NOT_FOUND, ExtraData=File.Path)
 
         try:
-            FileIn = self.OpenUniFile(LongFilePath(File.Path))
+            FileIn = UniFileClassObject.OpenUniFile(LongFilePath(File.Path))
         except UnicodeError, X:
             EdkLogger.error("build", FILE_READ_FAILURE, "File read failure: %s" % str(X), ExtraData=File.Path);
         except:
@@ -406,7 +405,7 @@ class UniFileClassObject(object):
         for Line in FileIn:
             Line = Line.strip()
             Line = Line.replace(u'\\\\', BACK_SLASH_PLACEHOLDER)
-            Line = self.StripComments(Line)
+            Line = StripComments(Line)
 
             #
             # Ignore empty line

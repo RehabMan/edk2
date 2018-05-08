@@ -315,7 +315,7 @@ def main():
                 for Fd in FdfParserObj.Profile.FdDict:
                     FdObj = FdfParserObj.Profile.FdDict[Fd]
                     for RegionObj in FdObj.RegionList:
-                        if RegionObj.RegionType != 'FV':
+                        if RegionObj.RegionType != BINARY_FILE_TYPE_FV:
                             continue
                         for RegionData in RegionObj.RegionDataList:
                             if FvObj.UiFvName.upper() == RegionData.upper():
@@ -405,7 +405,7 @@ def FindExtendTool(KeyStringList, CurrentArchList, NameGuid):
                   KeyList[1] + \
                   '_' + \
                   KeyList[2]
-            if Key in KeyStringList and KeyList[4] == 'GUID':
+            if Key in KeyStringList and KeyList[4] == TAB_GUID:
                 ToolPathKey   = Key + '_' + KeyList[3] + '_PATH'
                 ToolOptionKey = Key + '_' + KeyList[3] + '_FLAGS'
                 ToolPath = ToolDefinition.get(ToolPathKey)
@@ -428,7 +428,7 @@ def FindExtendTool(KeyStringList, CurrentArchList, NameGuid):
         if BuildOption:
             ToolList = [TAB_TOD_DEFINES_TARGET, TAB_TOD_DEFINES_TOOL_CHAIN_TAG, TAB_TOD_DEFINES_TARGET_ARCH]
             for Index in range(2, -1, -1):
-                for Key in dict(BuildOption):
+                for Key in list(BuildOption.keys()):
                     List = Key.split('_')
                     if List[Index] == '*':
                         for String in ToolDb[ToolList[Index]]:
@@ -447,7 +447,7 @@ def FindExtendTool(KeyStringList, CurrentArchList, NameGuid):
                 if NameGuid == BuildOption[Op]:
                     KeyList = Op.split('_')
                     Key = KeyList[0] + '_' + KeyList[1] +'_' + KeyList[2]
-                    if Key in KeyStringList and KeyList[4] == 'GUID':
+                    if Key in KeyStringList and KeyList[4] == TAB_GUID:
                         ToolPathKey   = Key + '_' + KeyList[3] + '_PATH'
                         ToolOptionKey = Key + '_' + KeyList[3] + '_FLAGS'
         if ToolPathKey in BuildOption:
@@ -589,7 +589,7 @@ class GenFds :
         if FdObj is None:
             for ElementFd in GenFdsGlobalVariable.FdfParser.Profile.FdDict.values():
                 for ElementRegion in ElementFd.RegionList:
-                    if ElementRegion.RegionType == 'FV':
+                    if ElementRegion.RegionType == BINARY_FILE_TYPE_FV:
                         for ElementRegionData in ElementRegion.RegionDataList:
                             if ElementRegionData is not None and ElementRegionData.upper() == FvObj.UiFvName:
                                 if FvObj.BlockSizeList != []:
@@ -601,7 +601,7 @@ class GenFds :
             return DefaultBlockSize
         else:
             for ElementRegion in FdObj.RegionList:
-                    if ElementRegion.RegionType == 'FV':
+                    if ElementRegion.RegionType == BINARY_FILE_TYPE_FV:
                         for ElementRegionData in ElementRegion.RegionDataList:
                             if ElementRegionData is not None and ElementRegionData.upper() == FvObj.UiFvName:
                                 if FvObj.BlockSizeList != []:
@@ -761,7 +761,7 @@ class GenFds :
                                     length = F.tell()
                                     F.seek(4)
                                     TmpStr = unpack('%dh' % ((length - 4) / 2), F.read())
-                                    Name = ''.join([chr(c) for c in TmpStr[:-1]])
+                                    Name = ''.join(chr(c) for c in TmpStr[:-1])
                         else:
                             FileList = []
                             if 'fv.sec.txt' in MatchDict:
