@@ -38,6 +38,7 @@
   IntelFrameworkModulePkg/IntelFrameworkModulePkg.dec
   SourceLevelDebugPkg/SourceLevelDebugPkg.dec
   OvmfPkg/OvmfPkg.dec
+  SecurityPkg/SecurityPkg.dec
 
 [LibraryClasses]
   BaseLib
@@ -55,7 +56,9 @@
   QemuFwCfgS3Lib
   LoadLinuxLib
   QemuBootOrderLib
+  ReportStatusCodeLib
   UefiLib
+  Tcg2PhysicalPresenceLib
 
 [Pcd]
   gUefiOvmfPkgTokenSpaceGuid.PcdEmuVariableEvent

@@ -48,12 +48,12 @@ from GenFdsGlobalVariable import GenFdsGlobalVariable
 from Common.BuildToolError import *
 from Common import EdkLogger
 from Common.Misc import PathClass
-from Common.String import NormPath
+from Common.StringUtils import NormPath
 import Common.GlobalData as GlobalData
 from Common.Expression import *
 from Common import GlobalData
 from Common.DataType import *
-from Common.String import ReplaceMacro
+from Common.StringUtils import ReplaceMacro
 import uuid
 from Common.Misc import tdict
 from Common.MultipleWorkspace import MultipleWorkspace as mws
@@ -914,7 +914,6 @@ class FdfParser:
         return MacroDict
 
     def __EvaluateConditional(self, Expression, Line, Op = None, Value = None):
-        FileLineTuple = GetRealFileLine(self.FileName, Line)
         MacroPcdDict = self.__CollectMacroPcd()
         if Op == 'eval':
             try:
@@ -939,12 +938,12 @@ class FdfParser:
                                       " it must be defined in a [PcdsFixedAtBuild] or [PcdsFeatureFlag] section"
                                       " of the DSC file (%s), and it is currently defined in this section:"
                                       " %s, line #: %d." % (Excpt.Pcd, GlobalData.gPlatformOtherPcds['DSCFILE'], Info[0], Info[1]),
-                                      *FileLineTuple)
+                                      self.FileName, Line)
                     else:
                         raise Warning("PCD (%s) is not defined in DSC file (%s)" % (Excpt.Pcd, GlobalData.gPlatformOtherPcds['DSCFILE']),
-                                      *FileLineTuple)
+                                      self.FileName, Line)
                 else:
-                    raise Warning(str(Excpt), *FileLineTuple)
+                    raise Warning(str(Excpt), self.FileName, Line)
         else:
             if Expression.startswith('$(') and Expression[-1] == ')':
                 Expression = Expression[2:-1]            
