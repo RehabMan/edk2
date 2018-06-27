@@ -17,7 +17,7 @@
 import Common.LongFilePathOs as os
 import sys
 import re
-import StringIO
+from io import BytesIO
 
 from optparse import OptionParser
 from optparse import make_option
@@ -261,7 +261,7 @@ def TrimPreprocessedVfr(Source, Target):
     CreateDirectory(os.path.dirname(Target))
     
     try:
-        f = open (Source,'r')
+        f = open (Source, 'r')
     except:
         EdkLogger.error("Trim", FILE_OPEN_FAILURE, ExtraData=Source)
     # read whole file
@@ -310,7 +310,7 @@ def TrimPreprocessedVfr(Source, Target):
 
     # save all lines trimmed
     try:
-        f = open (Target,'w')
+        f = open (Target, 'w')
     except:
         EdkLogger.error("Trim", FILE_OPEN_FAILURE, ExtraData=Target)
     f.writelines(Lines)
@@ -407,7 +407,7 @@ def TrimAslFile(Source, Target, IncludePathFile):
     if IncludePathFile:
         try:
             LineNum = 0
-            for Line in open(IncludePathFile,'r'):
+            for Line in open(IncludePathFile, 'r'):
                 LineNum += 1
                 if Line.startswith("/I") or Line.startswith ("-I"):
                     IncludePathList.append(Line[2:].strip())
@@ -425,7 +425,7 @@ def TrimAslFile(Source, Target, IncludePathFile):
 
     # save all lines trimmed
     try:
-        f = open (Target,'w')
+        f = open (Target, 'w')
     except:
         EdkLogger.error("Trim", FILE_OPEN_FAILURE, ExtraData=Target)
 
@@ -455,8 +455,8 @@ def GenerateVfrBinSec(ModuleName, DebugDir, OutputFile):
     except:
         EdkLogger.error("Trim", FILE_OPEN_FAILURE, "File open failed for %s" %OutputFile, None)
 
-    # Use a instance of StringIO to cache data
-    fStringIO = StringIO.StringIO('')
+    # Use a instance of BytesIO to cache data
+    fStringIO = BytesIO('')
 
     for Item in VfrUniOffsetList:
         if (Item[0].find("Strings") != -1):
@@ -560,7 +560,7 @@ def TrimEdkSourceCode(Source, Target):
     CreateDirectory(os.path.dirname(Target))
 
     try:
-        f = open (Source,'rb')
+        f = open (Source, 'rb')
     except:
         EdkLogger.error("Trim", FILE_OPEN_FAILURE, ExtraData=Source)
     # read whole file
@@ -568,7 +568,7 @@ def TrimEdkSourceCode(Source, Target):
     f.close()
 
     NewLines = None
-    for Re,Repl in gImportCodePatterns:
+    for Re, Repl in gImportCodePatterns:
         if NewLines is None:
             NewLines = Re.sub(Repl, Lines)
         else:
@@ -579,7 +579,7 @@ def TrimEdkSourceCode(Source, Target):
         return
 
     try:
-        f = open (Target,'wb')
+        f = open (Target, 'wb')
     except:
         EdkLogger.error("Trim", FILE_OPEN_FAILURE, ExtraData=Target)
     f.write(NewLines)
@@ -668,7 +668,7 @@ def Main():
             EdkLogger.SetLevel(CommandOptions.LogLevel + 1)
         else:
             EdkLogger.SetLevel(CommandOptions.LogLevel)
-    except FatalError, X:
+    except FatalError as X:
         return 1
     
     try:
@@ -688,7 +688,7 @@ def Main():
             if CommandOptions.OutputFile is None:
                 CommandOptions.OutputFile = os.path.splitext(InputFile)[0] + '.iii'
             TrimPreprocessedFile(InputFile, CommandOptions.OutputFile, CommandOptions.ConvertHex, CommandOptions.TrimLong)
-    except FatalError, X:
+    except FatalError as X:
         import platform
         import traceback
         if CommandOptions is not None and CommandOptions.LogLevel <= EdkLogger.DEBUG_9:

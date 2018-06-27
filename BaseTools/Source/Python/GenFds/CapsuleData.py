@@ -17,7 +17,7 @@
 #
 import Ffs
 from GenFdsGlobalVariable import GenFdsGlobalVariable
-import StringIO
+from io import BytesIO
 from struct import pack
 import os
 from Common.Misc import SaveFileOnChange
@@ -82,7 +82,7 @@ class CapsuleFv (CapsuleData):
         if self.FvName.find('.fv') == -1:
             if self.FvName.upper() in GenFdsGlobalVariable.FdfParser.Profile.FvDict:
                 FvObj = GenFdsGlobalVariable.FdfParser.Profile.FvDict[self.FvName.upper()]
-                FdBuffer = StringIO.StringIO('')
+                FdBuffer = BytesIO('')
                 FvObj.CapsuleName = self.CapsuleName
                 FvFile = FvObj.AddToBuffer(FdBuffer)
                 FvObj.CapsuleName = None
@@ -207,7 +207,7 @@ class CapsulePayload(CapsuleData):
         #
         Guid = self.ImageTypeId.split('-')
         Buffer = pack('=ILHHBBBBBBBBBBBBIIQ',
-                       int(self.Version,16),
+                       int(self.Version, 16),
                        int(Guid[0], 16), 
                        int(Guid[1], 16), 
                        int(Guid[2], 16), 

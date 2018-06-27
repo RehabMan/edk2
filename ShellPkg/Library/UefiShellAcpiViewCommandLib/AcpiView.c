@@ -1,4 +1,4 @@
-/**
+/** @file
 
   Copyright (c) 2016 - 2018, ARM Limited. All rights reserved.
   This program and the accompanying materials
@@ -35,8 +35,9 @@ STATIC BOOLEAN            mVerbose;
 STATIC BOOLEAN            mConsistencyCheck;
 STATIC BOOLEAN            mColourHighlighting;
 
-/** An array of acpiview command line parameters.
-*/
+/**
+  An array of acpiview command line parameters.
+**/
 STATIC CONST SHELL_PARAM_ITEM ParamList[] = {
   {L"/?", TypeFlag},
   {L"-c", TypeFlag},
@@ -48,10 +49,11 @@ STATIC CONST SHELL_PARAM_ITEM ParamList[] = {
   {NULL, TypeMax}
 };
 
-/** This function returns the colour highlighting status.
+/**
+  This function returns the colour highlighting status.
 
   @retval TRUE if colour highlighting is enabled.
-*/
+**/
 BOOLEAN
 GetColourHighlighting (
   VOID
@@ -60,9 +62,12 @@ GetColourHighlighting (
   return mColourHighlighting;
 }
 
-/** This function sets the colour highlighting status.
+/**
+  This function sets the colour highlighting status.
 
-*/
+  @param  Highlight       The Highlight status.
+
+**/
 VOID
 SetColourHighlighting (
   BOOLEAN Highlight
@@ -71,10 +76,11 @@ SetColourHighlighting (
   mColourHighlighting = Highlight;
 }
 
-/** This function returns the report options.
+/**
+  This function returns the report options.
 
   @retval Returns the report option.
-*/
+**/
 STATIC
 EREPORT_OPTION
 GetReportOption (
@@ -84,10 +90,11 @@ GetReportOption (
   return mReportType;
 }
 
-/** This function returns the selected ACPI table.
+/**
+  This function returns the selected ACPI table.
 
   @retval Returns signature of the selected ACPI table.
-*/
+**/
 STATIC
 UINT32
 GetSelectedAcpiTable (
@@ -97,13 +104,15 @@ GetSelectedAcpiTable (
   return mSelectedAcpiTable;
 }
 
-/** This function dumps the ACPI table to a file.
+/**
+  This function dumps the ACPI table to a file.
+
   @param [in] Ptr       Pointer to the ACPI table data.
   @param [in] Length    The length of the ACPI table.
 
   @retval TRUE          Success.
   @retval FALSE         Failure.
-*/
+**/
 STATIC
 BOOLEAN
 DumpAcpiTableToFile (
@@ -113,8 +122,11 @@ DumpAcpiTableToFile (
 {
   EFI_STATUS         Status;
   CHAR16             FileNameBuffer[MAX_FILE_NAME_LEN];
-  SHELL_FILE_HANDLE  DumpFileHandle = NULL;
-  UINTN              TransferBytes = Length;
+  SHELL_FILE_HANDLE  DumpFileHandle;
+  UINTN              TransferBytes;
+
+  DumpFileHandle = NULL;
+  TransferBytes = Length;
 
   UnicodeSPrint (
     FileNameBuffer,
@@ -160,14 +172,15 @@ DumpAcpiTableToFile (
   return (Length == TransferBytes);
 }
 
-/** This function processes the table reporting options for the ACPI table.
+/**
+  This function processes the table reporting options for the ACPI table.
 
   @param [in] Signature The ACPI table Signature.
   @param [in] TablePtr  Pointer to the ACPI table data.
   @param [in] Length    The length fo the ACPI table.
 
   @retval Returns TRUE if the ACPI table should be traced.
-*/
+**/
 BOOLEAN
 ProcessTableReportOptions (
   IN CONST UINT32  Signature,
@@ -176,20 +189,25 @@ ProcessTableReportOptions (
   )
 {
   UINTN   OriginalAttribute;
-  UINT8*  SignaturePtr = (UINT8*)(UINTN)&Signature;
-  BOOLEAN Log = FALSE;
-  BOOLEAN HighLight = GetColourHighlighting ();
+  UINT8*  SignaturePtr;
+  BOOLEAN Log;
+  BOOLEAN HighLight;
+
+  SignaturePtr = (UINT8*)(UINTN)&Signature;
+  Log = FALSE;
+  HighLight = GetColourHighlighting ();
+
   switch (GetReportOption ()) {
-    case EREPORT_ALL:
+    case ReportAll:
       Log = TRUE;
       break;
-    case EREPORT_SELECTED:
+    case ReportSelected:
       if (Signature == GetSelectedAcpiTable ()) {
         Log = TRUE;
         mSelectedAcpiTableFound = TRUE;
       }
       break;
-    case EREPORT_TABLE_LIST:
+    case ReportTableList:
       if (mTableCount == 0) {
         if (HighLight) {
           OriginalAttribute = gST->ConOut->Mode->Attribute;
@@ -213,13 +231,13 @@ ProcessTableReportOptions (
         SignaturePtr[3]
         );
       break;
-    case EREPORT_DUMP_BIN_FILE:
+    case ReportDumpBinFile:
       if (Signature == GetSelectedAcpiTable ()) {
         mSelectedAcpiTableFound = TRUE;
         DumpAcpiTableToFile (TablePtr, Length);
       }
       break;
-    case EREPORT_MAX:
+    case ReportMax:
       // We should never be here.
       // This case is only present to prevent compiler warning.
       break;
@@ -249,21 +267,24 @@ ProcessTableReportOptions (
   return Log;
 }
 
-/** This function converts a string to ACPI table signature.
+/**
+  This function converts a string to ACPI table signature.
 
   @param [in] Str   Pointer to the string to be converted to the
                     ACPI table signature.
 
   @retval The ACPI table signature.
-*/
+**/
 STATIC
 UINT32
 ConvertStrToAcpiSignature (
   IN  CONST CHAR16* Str
   )
 {
-  UINT8 Index = 0;
+  UINT8 Index;
   CHAR8 Ptr[4];
+
+  Index = 0;
 
   // Convert to Upper case and convert to ASCII
   while ((Index < 4) && (Str[Index] != 0)) {
@@ -277,16 +298,16 @@ ConvertStrToAcpiSignature (
   return *(UINT32*)Ptr;
 }
 
-/** This function iterates the configuration table entries in the
-    system table, retrieves the RSDP pointer and starts parsing
-    the ACPI tables.
+/**
+  This function iterates the configuration table entries in the
+  system table, retrieves the RSDP pointer and starts parsing the ACPI tables.
 
   @param [in] SystemTable Pointer to the EFI system table.
 
   @retval Returns EFI_NOT_FOUND   if the RSDP pointer is not found.
           Returns EFI_UNSUPPORTED if the RSDP version is less than 2.
           Returns EFI_SUCCESS     if successful.
-*/
+**/
 STATIC
 EFI_STATUS
 EFIAPI
@@ -360,12 +381,12 @@ AcpiView (
   }
 
   ReportOption = GetReportOption ();
-  if (EREPORT_TABLE_LIST != ReportOption) {
-    if (((EREPORT_SELECTED == ReportOption)  ||
-         (EREPORT_DUMP_BIN_FILE == ReportOption)) &&
+  if (ReportTableList != ReportOption) {
+    if (((ReportSelected == ReportOption)  ||
+         (ReportDumpBinFile == ReportOption)) &&
         (!mSelectedAcpiTableFound)) {
       Print (L"\nRequested ACPI Table not found.\n");
-    } else if (EREPORT_DUMP_BIN_FILE != ReportOption) {
+    } else if (ReportDumpBinFile != ReportOption) {
       OriginalAttribute = gST->ConOut->Mode->Attribute;
 
       Print (L"\nTable Statistics:\n");
@@ -406,7 +427,7 @@ AcpiView (
 
   @param[in] ImageHandle  Handle to the Image (NULL if Internal).
   @param[in] SystemTable  Pointer to the System Table (NULL if Internal).
-*/
+**/
 SHELL_STATUS
 EFIAPI
 ShellCommandRunAcpiView (
@@ -415,15 +436,15 @@ ShellCommandRunAcpiView (
   )
 {
   EFI_STATUS         Status;
-  SHELL_STATUS       ShellStatus = SHELL_SUCCESS;
-  LIST_ENTRY*        Package = NULL;
+  SHELL_STATUS       ShellStatus;
+  LIST_ENTRY*        Package;
   CHAR16*            ProblemParam;
   CONST CHAR16*      Temp;
   CHAR8              ColourOption[8];
-  SHELL_FILE_HANDLE  TmpDumpFileHandle = NULL;
+  SHELL_FILE_HANDLE  TmpDumpFileHandle;
 
   // Set Defaults
-  mReportType = EREPORT_ALL;
+  mReportType = ReportAll;
   mTableCount = 0;
   mBinTableCount = 0;
   mSelectedAcpiTable = 0;
@@ -431,6 +452,10 @@ ShellCommandRunAcpiView (
   mSelectedAcpiTableFound = FALSE;
   mVerbose = TRUE;
   mConsistencyCheck = TRUE;
+
+  ShellStatus = SHELL_SUCCESS;
+  Package = NULL;
+  TmpDumpFileHandle = NULL;
 
   // Reset The error/warning counters
   ResetErrorCount ();
@@ -536,19 +561,19 @@ ShellCommandRunAcpiView (
       }
 
       if (ShellCommandLineGetFlag (Package, L"-l")) {
-        mReportType = EREPORT_TABLE_LIST;
+        mReportType = ReportTableList;
       } else {
         mSelectedAcpiTableName = ShellCommandLineGetValue (Package, L"-s");
         if (mSelectedAcpiTableName != NULL) {
           mSelectedAcpiTable = (UINT32)ConvertStrToAcpiSignature (
                                          mSelectedAcpiTableName
                                          );
-          mReportType = EREPORT_SELECTED;
+          mReportType = ReportSelected;
 
           if (ShellCommandLineGetFlag (Package, L"-d"))  {
             // Create a temporary file to check if the media is writable.
             CHAR16 FileNameBuffer[MAX_FILE_NAME_LEN];
-            mReportType = EREPORT_DUMP_BIN_FILE;
+            mReportType = ReportDumpBinFile;
 
             UnicodeSPrint (
               FileNameBuffer,

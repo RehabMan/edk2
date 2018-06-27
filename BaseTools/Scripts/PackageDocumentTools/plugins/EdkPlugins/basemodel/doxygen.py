@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #
 
+from __future__ import print_function
 import os
 
 from message import *
@@ -65,7 +66,7 @@ class Page(BaseDoxygeItem):
 
     def AddSection(self, section):
         self.mSections.append(section)
-        self.mSections.sort(cmp=lambda x,y: cmp(x.mName.lower(), y.mName.lower()))
+        self.mSections.sort(cmp=lambda x, y: cmp(x.mName.lower(), y.mName.lower()))
 
     def Generate(self):
         if self.mIsMainPage:
@@ -90,7 +91,7 @@ class Page(BaseDoxygeItem):
             self.mText.insert(endIndex, '<ul>')
             endIndex += 1
             if self.mIsSort:
-                self.mSubPages.sort(cmp=lambda x,y: cmp(x.mName.lower(), y.mName.lower()))
+                self.mSubPages.sort(cmp=lambda x, y: cmp(x.mName.lower(), y.mName.lower()))
             for page in self.mSubPages:
                 self.mText.insert(endIndex, '<li>\subpage %s \"%s\" </li>' % (page.mTag, page.mName))
                 endIndex += 1
@@ -115,7 +116,7 @@ class DoxygenFile(Page):
             f = open(self.mFilename, 'w')
             f.write('\n'.join(str))
             f.close()
-        except IOError, e:
+        except IOError as e:
             ErrorMsg ('Fail to write file %s' % self.mFilename)
             return False
 
@@ -429,7 +430,7 @@ class DoxygenConfigFile:
             f = open(path, 'w')
             f.write(text)
             f.close()
-        except IOError, e:
+        except IOError as e:
             ErrorMsg ('Fail to generate doxygen config file %s' % path)
             return False
 
@@ -446,4 +447,4 @@ if __name__== '__main__':
     p.AddPage(Page('PCD', 'pcds'))
 
     df.Generate()
-    print df
+    print(df)

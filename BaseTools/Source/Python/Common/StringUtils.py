@@ -251,7 +251,7 @@ def SplitModuleType(Key):
 def ReplaceMacros(StringList, MacroDefinitions={}, SelfReplacement=False):
     NewList = []
     for String in StringList:
-        if type(String) == type(''):
+        if isinstance(String, type('')):
             NewList.append(ReplaceMacro(String, MacroDefinitions, SelfReplacement))
         else:
             NewList.append(String)
@@ -447,7 +447,7 @@ def GetMultipleValuesOfKeyFromLines(Lines, Key, KeyValues, CommentCharacter):
     for Line in LineList:
         Line = CleanString(Line, CommentCharacter)
         if Line != '' and Line[0] != CommentCharacter:
-            KeyValues += [Line]
+            KeyValues.append(Line)
 
     return True
 
@@ -750,7 +750,7 @@ def SplitString(String):
 # @param StringList:  A list for strings to be converted
 #
 def ConvertToSqlString(StringList):
-    return map(lambda s: s.replace("'", "''") , StringList)
+    return map(lambda s: s.replace("'", "''"), StringList)
 
 ## Convert To Sql String
 #
@@ -793,7 +793,7 @@ def RemoveBlockComment(Lines):
 # Get String of a List
 #
 def GetStringOfList(List, Split=' '):
-    if type(List) != type([]):
+    if not isinstance(List, type([])):
         return List
     Str = ''
     for Item in List:

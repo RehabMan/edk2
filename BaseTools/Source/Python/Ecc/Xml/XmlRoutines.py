@@ -15,6 +15,7 @@
 ##
 # Import Modules
 #
+from __future__ import print_function
 import xml.dom.minidom
 from Common.LongFilePathSupport import OpenLongFilePath as open
 
@@ -34,7 +35,7 @@ def CreateXmlElement(Name, String, NodeList, AttributeList):
         Element.appendChild(Doc.createTextNode(String))
     
     for Item in NodeList:
-        if type(Item) == type([]):
+        if isinstance(Item, type([])):
             Key = Item[0]
             Value = Item[1]
             if Key != '' and Key is not None and Value != '' and Value is not None:
@@ -214,8 +215,8 @@ def XmlParseFile(FileName):
         Dom = xml.dom.minidom.parse(XmlFile)
         XmlFile.close()
         return Dom
-    except Exception, X:
-        print X
+    except Exception as X:
+        print(X)
         return ""
 
 # This acts like the main() function for the script, unless it is 'import'ed
@@ -225,5 +226,5 @@ if __name__ == '__main__':
     A = CreateXmlElement('AAA', 'CCC',  [['AAA', '111'], ['BBB', '222']], [['A', '1'], ['B', '2']])
     B = CreateXmlElement('ZZZ', 'CCC',  [['XXX', '111'], ['YYY', '222']], [['A', '1'], ['B', '2']])
     C = CreateXmlList('DDD', 'EEE', [A, B], ['FFF', 'GGG'])
-    print C.toprettyxml(indent = " ")
+    print(C.toprettyxml(indent = " "))
     pass

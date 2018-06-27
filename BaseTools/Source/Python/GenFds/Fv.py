@@ -17,7 +17,7 @@
 #
 import Common.LongFilePathOs as os
 import subprocess
-import StringIO
+from io import BytesIO
 from struct import *
 
 import Ffs
@@ -265,7 +265,7 @@ class FV (FvClassObject):
         #
         self.InfFileName = os.path.join(GenFdsGlobalVariable.FvDir,
                                    self.UiFvName + '.inf')
-        self.FvInfFile = StringIO.StringIO()
+        self.FvInfFile = BytesIO()
 
         #
         # Add [Options]
@@ -379,8 +379,8 @@ class FV (FvClassObject):
                     # check if the file path exists or not
                     if not os.path.isfile(FileFullPath):
                         GenFdsGlobalVariable.ErrorLogger("Error opening FV Extension Header Entry file %s." % (self.FvExtEntryData[Index]))
-                    FvExtFile = open (FileFullPath,'rb')
-                    FvExtFile.seek(0,2)
+                    FvExtFile = open (FileFullPath, 'rb')
+                    FvExtFile.seek(0, 2)
                     Size = FvExtFile.tell()
                     if Size >= 0x10000:
                         GenFdsGlobalVariable.ErrorLogger("The size of FV Extension Header Entry file %s exceeds 0x10000." % (self.FvExtEntryData[Index]))
@@ -407,7 +407,7 @@ class FV (FvClassObject):
             #
             if TotalSize > 0:
                 FvExtHeaderFileName = os.path.join(GenFdsGlobalVariable.FvDir, self.UiFvName + '.ext')
-                FvExtHeaderFile = StringIO.StringIO()
+                FvExtHeaderFile = BytesIO()
                 FvExtHeaderFile.write(Buffer)
                 Changed = SaveFileOnChange(FvExtHeaderFileName, FvExtHeaderFile.getvalue(), True)
                 FvExtHeaderFile.close()

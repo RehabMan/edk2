@@ -16,10 +16,11 @@
 ##
 # Import Modules
 #
+from __future__ import print_function
 import Common.LongFilePathOs as os, codecs, re
 import distutils.util
 import Common.EdkLogger as EdkLogger
-import StringIO
+from io import BytesIO
 from Common.BuildToolError import *
 from Common.StringUtils import GetLineNo
 from Common.Misc import PathClass
@@ -254,7 +255,7 @@ class UniFileClassObject(object):
         if len(Lang) != 3:
             try:
                 FileIn = UniFileClassObject.OpenUniFile(LongFilePath(File.Path))
-            except UnicodeError, X:
+            except UnicodeError as X:
                 EdkLogger.error("build", FILE_READ_FAILURE, "File read failure: %s" % str(X), ExtraData=File);
             except:
                 EdkLogger.error("build", FILE_OPEN_FAILURE, ExtraData=File);
@@ -319,7 +320,7 @@ class UniFileClassObject(object):
 
         UniFileClassObject.VerifyUcs2Data(FileIn, FileName, Encoding)
 
-        UniFile = StringIO.StringIO(FileIn)
+        UniFile = BytesIO(FileIn)
         Info = codecs.lookup(Encoding)
         (Reader, Writer) = (Info.streamreader, Info.streamwriter)
         return codecs.StreamReaderWriter(UniFile, Reader, Writer)
@@ -334,7 +335,7 @@ class UniFileClassObject(object):
             FileDecoded = codecs.decode(FileIn, Encoding)
             Ucs2Info.encode(FileDecoded)
         except:
-            UniFile = StringIO.StringIO(FileIn)
+            UniFile = BytesIO(FileIn)
             Info = codecs.lookup(Encoding)
             (Reader, Writer) = (Info.streamreader, Info.streamwriter)
             File = codecs.StreamReaderWriter(UniFile, Reader, Writer)
@@ -393,7 +394,7 @@ class UniFileClassObject(object):
 
         try:
             FileIn = UniFileClassObject.OpenUniFile(LongFilePath(File.Path))
-        except UnicodeError, X:
+        except UnicodeError as X:
             EdkLogger.error("build", FILE_READ_FAILURE, "File read failure: %s" % str(X), ExtraData=File.Path);
         except:
             EdkLogger.error("build", FILE_OPEN_FAILURE, ExtraData=File.Path);
@@ -684,12 +685,12 @@ class UniFileClassObject(object):
     # Show the instance itself
     #
     def ShowMe(self):
-        print self.LanguageDef
+        print(self.LanguageDef)
         #print self.OrderedStringList
         for Item in self.OrderedStringList:
-            print Item
+            print(Item)
             for Member in self.OrderedStringList[Item]:
-                print str(Member)
+                print(str(Member))
 
 # This acts like the main() function for the script, unless it is 'import'ed into another
 # script.

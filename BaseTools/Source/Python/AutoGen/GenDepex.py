@@ -17,7 +17,7 @@ import Common.LongFilePathOs as os
 import re
 import traceback
 from Common.LongFilePathSupport import OpenLongFilePath as open
-from StringIO import StringIO
+from io import BytesIO
 from struct import pack
 from Common.BuildToolError import *
 from Common.Misc import SaveFileOnChange
@@ -140,7 +140,7 @@ class DependencyExpression:
     def __init__(self, Expression, ModuleType, Optimize=False):
         self.ModuleType = ModuleType
         self.Phase = gType2Phase[ModuleType]
-        if type(Expression) == type([]):
+        if isinstance(Expression, type([])):
             self.ExpressionString = " ".join(Expression)
             self.TokenList = Expression
         else:
@@ -345,7 +345,7 @@ class DependencyExpression:
     #   @retval False   If file exists and is not changed.
     #
     def Generate(self, File=None):
-        Buffer = StringIO()
+        Buffer = BytesIO()
         if len(self.PostfixNotation) == 0:
             return False
 
@@ -449,7 +449,7 @@ def Main():
                     os.utime(Option.OutputFile, None)
         else:
             Dpx.Generate()
-    except BaseException, X:
+    except BaseException as X:
         EdkLogger.quiet("")
         if Option is not None and Option.debug is not None:
             EdkLogger.quiet(traceback.format_exc())

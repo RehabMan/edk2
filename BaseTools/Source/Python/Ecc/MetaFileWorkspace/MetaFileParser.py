@@ -68,7 +68,7 @@ def ParseMacro(Parser):
         self._ItemType = MODEL_META_DATA_DEFINE
         # DEFINE defined macros
         if Type == TAB_DSC_DEFINES_DEFINE:
-            if type(self) == DecParser:
+            if isinstance(self, DecParser):
                 if MODEL_META_DATA_HEADER in self._SectionType:
                     self._FileLocalMacros[Name] = Value
                 else:
@@ -83,7 +83,7 @@ def ParseMacro(Parser):
                 SectionLocalMacros = self._SectionsMacroDict[SectionDictKey]
                 SectionLocalMacros[Name] = Value
         # EDK_GLOBAL defined macros
-        elif type(self) != DscParser:
+        elif not isinstance(self, DscParser):
             EdkLogger.error('Parser', FORMAT_INVALID, "EDK_GLOBAL can only be used in .dsc file",
                             ExtraData=self._CurrentLine, File=self.MetaFile, Line=self._LineIndex+1)
         elif self._SectionType != MODEL_META_DATA_HEADER:
@@ -215,7 +215,7 @@ class MetaFileParser(object):
     #   DataInfo = [data_type, scope1(arch), scope2(platform/moduletype)]
     #
     def __getitem__(self, DataInfo):
-        if type(DataInfo) != type(()):
+        if not isinstance(DataInfo, type(())):
             DataInfo = (DataInfo,)
 
         # Parse the file first, if necessary
@@ -257,7 +257,7 @@ class MetaFileParser(object):
         TokenList = GetSplitValueList(self._CurrentLine, TAB_VALUE_SPLIT)
         self._ValueList[0:len(TokenList)] = TokenList
         # Don't do macro replacement for dsc file at this point
-        if type(self) != DscParser:
+        if not isinstance(self, DscParser):
             Macros = self._Macros
             self._ValueList = [ReplaceMacro(Value, Macros) for Value in self._ValueList]
 
@@ -355,7 +355,7 @@ class MetaFileParser(object):
             if os.path.exists(UniFile):
                 self._UniObj = UniParser(UniFile, IsExtraUni=False, IsModuleUni=False)
         
-        if type(self) == InfParser and self._Version < 0x00010005:
+        if isinstance(self, InfParser) and self._Version < 0x00010005:
             # EDK module allows using defines as macros
             self._FileLocalMacros[Name] = Value
         self._Defines[Name] = Value
@@ -370,7 +370,7 @@ class MetaFileParser(object):
             self._ValueList[1] = TokenList2[1]              # keys
         else:
             self._ValueList[1] = TokenList[0]
-        if len(TokenList) == 2 and type(self) != DscParser: # value
+        if len(TokenList) == 2 and not isinstance(self, DscParser): # value
             self._ValueList[2] = ReplaceMacro(TokenList[1], self._Macros)
 
         if self._ValueList[1].count('_') != 4:
@@ -561,7 +561,7 @@ class InfParser(MetaFileParser):
                     NmakeLine = ''
 
             # section content
-            self._ValueList = ['','','']
+            self._ValueList = ['', '', '']
             # parse current line, result will be put in self._ValueList
             self._SectionParser[self._SectionType](self)
             if self._ValueList is None or self._ItemType == MODEL_META_DATA_DEFINE:
@@ -920,7 +920,7 @@ class DscParser(MetaFileParser):
 
     ## Directive statement parser
     def _DirectiveParser(self):
-        self._ValueList = ['','','']
+        self._ValueList = ['', '', '']
         TokenList = GetSplitValueList(self._CurrentLine, ' ', 1)
         self._ValueList[0:len(TokenList)] = TokenList
 
@@ -1110,7 +1110,7 @@ class DscParser(MetaFileParser):
 
     ## Override parent's method since we'll do all macro replacements in parser
     def _GetMacros(self):
-        Macros = dict( [('ARCH','IA32'), ('FAMILY','MSFT'),('TOOL_CHAIN_TAG','VS2008x86'),('TARGET','DEBUG')])
+        Macros = dict( [('ARCH', 'IA32'), ('FAMILY', 'MSFT'), ('TOOL_CHAIN_TAG', 'VS2008x86'), ('TARGET', 'DEBUG')])
         Macros.update(self._FileLocalMacros)
         Macros.update(self._GetApplicableSectionMacro())
         Macros.update(GlobalData.gEdkGlobal)
@@ -1183,7 +1183,7 @@ class DscParser(MetaFileParser):
 
             try:
                 Processer[self._ItemType]()
-            except EvaluationException, Excpt:
+            except EvaluationException as Excpt:
                 # 
                 # Only catch expression evaluation error here. We need to report
                 # the precise number of line on which the error occurred
@@ -1192,7 +1192,7 @@ class DscParser(MetaFileParser):
 #                 EdkLogger.error('Parser', FORMAT_INVALID, "Invalid expression: %s" % str(Excpt),
 #                                 File=self._FileWithError, ExtraData=' '.join(self._ValueList),
 #                                 Line=self._LineIndex+1)
-            except MacroException, Excpt:
+            except MacroException as Excpt:
                 EdkLogger.error('Parser', FORMAT_INVALID, str(Excpt),
                                 File=self._FileWithError, ExtraData=' '.join(self._ValueList), 
                                 Line=self._LineIndex+1)
@@ -1225,7 +1225,7 @@ class DscParser(MetaFileParser):
         self._RawTable.Drop()
         self._Table.Drop()
         for Record in RecordList:
-            EccGlobalData.gDb.TblDsc.Insert(Record[1],Record[2],Record[3],Record[4],Record[5],Record[6],Record[7],Record[8],Record[9],Record[10],Record[11],Record[12],Record[13],Record[14])
+            EccGlobalData.gDb.TblDsc.Insert(Record[1], Record[2], Record[3], Record[4], Record[5], Record[6], Record[7], Record[8], Record[9], Record[10], Record[11], Record[12], Record[13], Record[14])
         GlobalData.gPlatformDefines.update(self._FileLocalMacros)
         self._PostProcessed = True
         self._Content = None
@@ -1246,7 +1246,7 @@ class DscParser(MetaFileParser):
 
     def __RetrievePcdValue(self):
         Records = self._RawTable.Query(MODEL_PCD_FEATURE_FLAG, BelongsToItem=-1.0)
-        for TokenSpaceGuid,PcdName,Value,Dummy2,Dummy3,ID,Line in Records:
+        for TokenSpaceGuid, PcdName, Value, Dummy2, Dummy3, ID, Line in Records:
             Value, DatumType, MaxDatumSize = AnalyzePcdData(Value)
             # Only use PCD whose value is straitforward (no macro and PCD)
             if self.SymbolPattern.findall(Value):
@@ -1259,7 +1259,7 @@ class DscParser(MetaFileParser):
             self._Symbols[Name] = Value
 
         Records = self._RawTable.Query(MODEL_PCD_FIXED_AT_BUILD, BelongsToItem=-1.0)
-        for TokenSpaceGuid,PcdName,Value,Dummy2,Dummy3,ID,Line in Records:
+        for TokenSpaceGuid, PcdName, Value, Dummy2, Dummy3, ID, Line in Records:
             Value, DatumType, MaxDatumSize = AnalyzePcdData(Value)
             # Only use PCD whose value is straitforward (no macro and PCD)
             if self.SymbolPattern.findall(Value):
@@ -1305,10 +1305,10 @@ class DscParser(MetaFileParser):
             Macros.update(GlobalData.gGlobalDefines)
             try:
                 Result = ValueExpression(self._ValueList[1], Macros)()
-            except SymbolNotFound, Exc:
+            except SymbolNotFound as Exc:
                 EdkLogger.debug(EdkLogger.DEBUG_5, str(Exc), self._ValueList[1])
                 Result = False
-            except WrnExpression, Excpt:
+            except WrnExpression as Excpt:
                 # 
                 # Catch expression evaluation warning here. We need to report
                 # the precise number of line and return the evaluation result
@@ -1317,7 +1317,7 @@ class DscParser(MetaFileParser):
                                 File=self._FileWithError, ExtraData=' '.join(self._ValueList), 
                                 Line=self._LineIndex+1)
                 Result = Excpt.result
-            except BadExpression, Exc:
+            except BadExpression as Exc:
                 EdkLogger.debug(EdkLogger.DEBUG_5, str(Exc), self._ValueList[1])
                 Result = False
 
@@ -1437,13 +1437,13 @@ class DscParser(MetaFileParser):
             PcdValue = ValueList[0]      
             try:
                 ValueList[0] = ValueExpression(PcdValue, self._Macros)(True)
-            except WrnExpression, Value:
+            except WrnExpression as Value:
                 ValueList[0] = Value.result          
         else:
             PcdValue = ValueList[-1]
             try:
                 ValueList[-1] = ValueExpression(PcdValue, self._Macros)(True)
-            except WrnExpression, Value:
+            except WrnExpression as Value:
                 ValueList[-1] = Value.result
             
             if ValueList[-1] == 'True':
@@ -1571,7 +1571,7 @@ class DecParser(MetaFileParser):
                 continue
 
             # section content
-            self._ValueList = ['','','']
+            self._ValueList = ['', '', '']
             self._SectionParser[self._SectionType[0]](self)
             if self._ValueList is None or self._ItemType == MODEL_META_DATA_DEFINE:
                 self._ItemType = -1
@@ -1717,7 +1717,7 @@ class DecParser(MetaFileParser):
                         GuidValue = GuidValue.lstrip(' {')
                         HexList.append('0x' + str(GuidValue[2:]))
                         Index += 1
-            self._ValueList[1] = "{ %s, %s, %s, { %s, %s, %s, %s, %s, %s, %s, %s }}" % (HexList[0], HexList[1], HexList[2],HexList[3],HexList[4],HexList[5],HexList[6],HexList[7],HexList[8],HexList[9],HexList[10])
+            self._ValueList[1] = "{ %s, %s, %s, { %s, %s, %s, %s, %s, %s, %s, %s }}" % (HexList[0], HexList[1], HexList[2], HexList[3], HexList[4], HexList[5], HexList[6], HexList[7], HexList[8], HexList[9], HexList[10])
         else:
             EdkLogger.error('Parser', FORMAT_INVALID, "Invalid GUID value format",
                             ExtraData=self._CurrentLine + \

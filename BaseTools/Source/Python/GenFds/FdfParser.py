@@ -16,6 +16,7 @@
 ##
 # Import Modules
 #
+from __future__ import print_function
 import re
 
 import Fd
@@ -904,7 +905,7 @@ class FdfParser:
         MacroDict.update(GlobalData.gCommandLineDefines)
         if GlobalData.BuildOptionPcd:
             for Item in GlobalData.BuildOptionPcd:
-                if type(Item) is tuple:
+                if isinstance(Item, tuple):
                     continue
                 PcdName, TmpValue = Item.split("=")
                 TmpValue = BuildOptionValue(TmpValue, {})
@@ -921,7 +922,7 @@ class FdfParser:
                     return ValueExpression(Expression, MacroPcdDict)(True)
                 else:
                     return ValueExpression(Expression, MacroPcdDict)()
-            except WrnExpression, Excpt:
+            except WrnExpression as Excpt:
                 # 
                 # Catch expression evaluation warning here. We need to report
                 # the precise number of line and return the evaluation result
@@ -930,7 +931,7 @@ class FdfParser:
                                 File=self.FileName, ExtraData=self.__CurrentLine(), 
                                 Line=Line)
                 return Excpt.result
-            except Exception, Excpt:
+            except Exception as Excpt:
                 if hasattr(Excpt, 'Pcd'):
                     if Excpt.Pcd in GlobalData.gPlatformOtherPcds:
                         Info = GlobalData.gPlatformOtherPcds[Excpt.Pcd]
@@ -1361,13 +1362,14 @@ class FdfParser:
 
         try:
             self.Preprocess()
+            self.__GetError()
             #
             # Keep processing sections of the FDF until no new sections or a syntax error is found
             #
             while self.__GetFd() or self.__GetFv() or self.__GetFmp() or self.__GetCapsule() or self.__GetVtf() or self.__GetRule() or self.__GetOptionRom():
                 pass
 
-        except Warning, X:
+        except Warning as X:
             self.__UndoToken()
             #'\n\tGot Token: \"%s\" from File %s\n' % (self.__Token, FileLineTuple[0]) + \
             # At this point, the closest parent would be the included file itself
@@ -1440,6 +1442,17 @@ class FdfParser:
             Value = self.__Token
 
         return False
+
+    ##__GetError() method
+    def __GetError(self):
+        #save the Current information
+        CurrentLine = self.CurrentLineNumber
+        CurrentOffset = self.CurrentOffsetWithinLine
+        while self.__GetNextToken():
+            if self.__Token == TAB_ERROR:
+                EdkLogger.error('FdfParser', ERROR_STATEMENT, self.__CurrentLine().replace(TAB_ERROR, '', 1), File=self.FileName, Line=self.CurrentLineNumber)
+        self.CurrentLineNumber = CurrentLine
+        self.CurrentOffsetWithinLine = CurrentOffset
 
     ## __GetFd() method
     #
@@ -1807,7 +1820,7 @@ class FdfParser:
             return long(
                 ValueExpression(Expr,
                                 self.__CollectMacroPcd()
-                                )(True),0)
+                                )(True), 0)
         except Exception:
             self.SetFileBufferPos(StartPos)
             return None
@@ -2328,7 +2341,7 @@ class FdfParser:
         if not self.__GetNextHexNumber() and not self.__GetNextDecimalNumber():
             raise Warning("expected Hex FV extension entry type value At Line ", self.FileName, self.CurrentLineNumber)
 
-        FvObj.FvExtEntryTypeValue += [self.__Token]
+        FvObj.FvExtEntryTypeValue.append(self.__Token)
 
         if not self.__IsToken( "{"):
             raise Warning("expected '{'", self.FileName, self.CurrentLineNumber)
@@ -2336,7 +2349,7 @@ class FdfParser:
         if not self.__IsKeyword ("FILE") and not self.__IsKeyword ("DATA"):
             raise Warning("expected 'FILE' or 'DATA'", self.FileName, self.CurrentLineNumber)
 
-        FvObj.FvExtEntryType += [self.__Token]
+        FvObj.FvExtEntryType.append(self.__Token)
 
         if self.__Token == 'DATA':
 
@@ -2370,7 +2383,7 @@ class FdfParser:
                 raise Warning("expected '}'", self.FileName, self.CurrentLineNumber)
 
             DataString = DataString.rstrip(",")
-            FvObj.FvExtEntryData += [DataString]
+            FvObj.FvExtEntryData.append(DataString)
 
         if self.__Token == 'FILE':
         
@@ -2380,7 +2393,7 @@ class FdfParser:
             if not self.__GetNextToken():
                 raise Warning("expected FV Extension Entry file path At Line ", self.FileName, self.CurrentLineNumber)
                 
-            FvObj.FvExtEntryData += [self.__Token]
+            FvObj.FvExtEntryData.append(self.__Token)
 
             if not self.__IsToken( "}"):
                 raise Warning("expected '}'", self.FileName, self.CurrentLineNumber)
@@ -2717,7 +2730,7 @@ class FdfParser:
         while True:
             AlignValue = None
             if self.__GetAlignment():
-                if self.__Token not in ("Auto", "8", "16", "32", "64", "128", "512", "1K", "4K", "32K" ,"64K", "128K",
+                if self.__Token not in ("Auto", "8", "16", "32", "64", "128", "512", "1K", "4K", "32K", "64K", "128K",
                                         "256K", "512K", "1M", "2M", "4M", "8M", "16M"):
                     raise Warning("Incorrect alignment '%s'" % self.__Token, self.FileName, self.CurrentLineNumber)
                 #For FFS, Auto is default option same to ""
@@ -2776,7 +2789,7 @@ class FdfParser:
             FfsFileObj.CheckSum = True
 
         if self.__GetAlignment():
-            if self.__Token not in ("Auto", "8", "16", "32", "64", "128", "512", "1K", "4K", "32K" ,"64K", "128K",
+            if self.__Token not in ("Auto", "8", "16", "32", "64", "128", "512", "1K", "4K", "32K", "64K", "128K",
                                     "256K", "512K", "1M", "2M", "4M", "8M", "16M"):
                 raise Warning("Incorrect alignment '%s'" % self.__Token, self.FileName, self.CurrentLineNumber)
             #For FFS, Auto is default option same to ""
@@ -2848,7 +2861,7 @@ class FdfParser:
 
         AlignValue = None
         if self.__GetAlignment():
-            if self.__Token not in ("Auto", "8", "16", "32", "64", "128", "512", "1K", "4K", "32K" ,"64K", "128K",
+            if self.__Token not in ("Auto", "8", "16", "32", "64", "128", "512", "1K", "4K", "32K", "64K", "128K",
                                     "256K", "512K", "1M", "2M", "4M", "8M", "16M"):
                 raise Warning("Incorrect alignment '%s'" % self.__Token, self.FileName, self.CurrentLineNumber)
             AlignValue = self.__Token
@@ -3138,7 +3151,7 @@ class FdfParser:
 
         AlignValue = None
         if self.__GetAlignment():
-            if self.__Token not in ("8", "16", "32", "64", "128", "512", "1K", "4K", "32K" ,"64K", "128K",
+            if self.__Token not in ("8", "16", "32", "64", "128", "512", "1K", "4K", "32K", "64K", "128K",
                                     "256K", "512K", "1M", "2M", "4M", "8M", "16M"):
                 raise Warning("Incorrect alignment '%s'" % self.__Token, self.FileName, self.CurrentLineNumber)
             AlignValue = self.__Token
@@ -3531,7 +3544,7 @@ class FdfParser:
         AfileName = self.__Token
         AfileBaseName = os.path.basename(AfileName)
         
-        if os.path.splitext(AfileBaseName)[1]  not in [".bin",".BIN",".Bin",".dat",".DAT",".Dat",".data",".DATA",".Data"]:
+        if os.path.splitext(AfileBaseName)[1]  not in [".bin", ".BIN", ".Bin", ".dat", ".DAT", ".Dat", ".data", ".DATA", ".Data"]:
             raise Warning('invalid binary file type, should be one of "bin",BINARY_FILE_TYPE_BIN,"Bin","dat","DAT","Dat","data","DATA","Data"', \
                           self.FileName, self.CurrentLineNumber)
         
@@ -3728,7 +3741,7 @@ class FdfParser:
 
         AlignValue = ""
         if self.__GetAlignment():
-            if self.__Token not in ("Auto", "8", "16", "32", "64", "128", "512", "1K", "4K", "32K" ,"64K", "128K",
+            if self.__Token not in ("Auto", "8", "16", "32", "64", "128", "512", "1K", "4K", "32K", "64K", "128K",
                                     "256K", "512K", "1M", "2M", "4M", "8M", "16M"):
                 raise Warning("Incorrect alignment '%s'" % self.__Token, self.FileName, self.CurrentLineNumber)
             #For FFS, Auto is default option same to ""
@@ -3778,7 +3791,7 @@ class FdfParser:
 
             SectAlignment = ""
             if self.__GetAlignment():
-                if self.__Token not in ("Auto", "8", "16", "32", "64", "128", "512", "1K", "4K", "32K" ,"64K", "128K",
+                if self.__Token not in ("Auto", "8", "16", "32", "64", "128", "512", "1K", "4K", "32K", "64K", "128K",
                                         "256K", "512K", "1M", "2M", "4M", "8M", "16M"):
                     raise Warning("Incorrect alignment '%s'" % self.__Token, self.FileName, self.CurrentLineNumber)
                 if self.__Token == 'Auto' and (not SectionName == BINARY_FILE_TYPE_PE32) and (not SectionName == BINARY_FILE_TYPE_TE):
@@ -3858,7 +3871,7 @@ class FdfParser:
                 FvImageSectionObj.FvFileType = self.__Token
 
                 if self.__GetAlignment():
-                    if self.__Token not in ("8", "16", "32", "64", "128", "512", "1K", "4K", "32K" ,"64K", "128K",
+                    if self.__Token not in ("8", "16", "32", "64", "128", "512", "1K", "4K", "32K", "64K", "128K",
                                             "256K", "512K", "1M", "2M", "4M", "8M", "16M"):
                         raise Warning("Incorrect alignment '%s'" % self.__Token, self.FileName, self.CurrentLineNumber)
                     FvImageSectionObj.Alignment = self.__Token
@@ -3926,7 +3939,7 @@ class FdfParser:
                 EfiSectionObj.BuildNum = self.__Token
 
         if self.__GetAlignment():
-            if self.__Token not in ("Auto", "8", "16", "32", "64", "128", "512", "1K", "4K", "32K" ,"64K", "128K",
+            if self.__Token not in ("Auto", "8", "16", "32", "64", "128", "512", "1K", "4K", "32K", "64K", "128K",
                                     "256K", "512K", "1M", "2M", "4M", "8M", "16M"):
                 raise Warning("Incorrect alignment '%s'" % self.__Token, self.FileName, self.CurrentLineNumber)
             if self.__Token == 'Auto' and (not SectionName == BINARY_FILE_TYPE_PE32) and (not SectionName == BINARY_FILE_TYPE_TE):
@@ -4666,7 +4679,7 @@ class FdfParser:
                     FvInFdList = self.__GetFvInFd(RefFdName)
                     if FvInFdList != []:
                         for FvNameInFd in FvInFdList:
-                            LogStr += "FD %s contains FV %s\n" % (RefFdName,FvNameInFd)
+                            LogStr += "FD %s contains FV %s\n" % (RefFdName, FvNameInFd)
                             if FvNameInFd not in RefFvStack:
                                 RefFvStack.append(FvNameInFd)
 
@@ -4722,7 +4735,7 @@ class FdfParser:
                         CapInFdList = self.__GetCapInFd(RefFdName)
                         if CapInFdList != []:
                             for CapNameInFd in CapInFdList:
-                                LogStr += "FD %s contains Capsule %s\n" % (RefFdName,CapNameInFd)
+                                LogStr += "FD %s contains Capsule %s\n" % (RefFdName, CapNameInFd)
                                 if CapNameInFd not in RefCapStack:
                                     RefCapStack.append(CapNameInFd)
 
@@ -4733,7 +4746,7 @@ class FdfParser:
                         FvInFdList = self.__GetFvInFd(RefFdName)
                         if FvInFdList != []:
                             for FvNameInFd in FvInFdList:
-                                LogStr += "FD %s contains FV %s\n" % (RefFdName,FvNameInFd)
+                                LogStr += "FD %s contains FV %s\n" % (RefFdName, FvNameInFd)
                                 if FvNameInFd not in RefFvList:
                                     RefFvList.append(FvNameInFd)
 
@@ -4764,16 +4777,16 @@ if __name__ == "__main__":
     import sys
     try:
         test_file = sys.argv[1]
-    except IndexError, v:
-        print "Usage: %s filename" % sys.argv[0]
+    except IndexError as v:
+        print("Usage: %s filename" % sys.argv[0])
         sys.exit(1)
 
     parser = FdfParser(test_file)
     try:
         parser.ParseFile()
         parser.CycleReferenceCheck()
-    except Warning, X:
-        print str(X)
+    except Warning as X:
+        print(str(X))
     else:
-        print "Success!"
+        print("Success!")
 

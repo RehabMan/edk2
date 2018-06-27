@@ -23,9 +23,20 @@
 #include <Library/DebugLib.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Protocol/MpService.h>
+#include <Protocol/SmmBase2.h>
+#include <Register/Cpuid.h>
+#include <Register/Msr.h>
 
 #include "CpuDxe.h"
 #include "CpuPageTable.h"
+
+///
+/// Paging registers
+///
+#define CR0_WP                      BIT16
+#define CR0_PG                      BIT31
+#define CR4_PSE                     BIT4
+#define CR4_PAE                     BIT5
 
 ///
 /// Page Table Entry
@@ -87,7 +98,46 @@ PAGE_ATTRIBUTE_TABLE mPageAttributeTable[] = {
   {Page1G,  SIZE_1GB, PAGING_1G_ADDRESS_MASK_64},
 };
 
-PAGE_TABLE_POOL   *mPageTablePool = NULL;
+PAGE_TABLE_POOL                   *mPageTablePool = NULL;
+PAGE_TABLE_LIB_PAGING_CONTEXT     mPagingContext;
+EFI_SMM_BASE2_PROTOCOL            *mSmmBase2 = NULL;
+
+/**
+ Check if current execution environment is in SMM mode or not, via
+ EFI_SMM_BASE2_PROTOCOL.
+
+ This is necessary because of the fact that MdePkg\Library\SmmMemoryAllocationLib
+ supports to free memory outside SMRAM. The library will call gBS->FreePool() or
+ gBS->FreePages() and then SetMemorySpaceAttributes interface in turn to change
+ memory paging attributes during free operation, if some memory related features
+ are enabled (like Heap Guard).
+
+ This means that SetMemorySpaceAttributes() has chance to run in SMM mode. This
+ will cause incorrect result because SMM mode always loads its own page tables,
+ which are usually different from DXE. This function can be used to detect such
+ situation and help to avoid further misoperations.
+
+  @retval TRUE    In SMM mode.
+  @retval FALSE   Not in SMM mode.
+**/
+BOOLEAN
+IsInSmm (
+  VOID
+  )
+{
+  BOOLEAN                 InSmm;
+
+  InSmm = FALSE;
+  if (mSmmBase2 == NULL) {
+    gBS->LocateProtocol (&gEfiSmmBase2ProtocolGuid, NULL, (VOID **)&mSmmBase2);
+  }
+
+  if (mSmmBase2 != NULL) {
+    mSmmBase2->InSmm (mSmmBase2, &InSmm);
+  }
+
+  return InSmm;
+}
 
 /**
   Return current paging context.
@@ -99,45 +149,60 @@ GetCurrentPagingContext (
   IN OUT PAGE_TABLE_LIB_PAGING_CONTEXT     *PagingContext
   )
 {
-  UINT32                         RegEax;
-  UINT32                         RegEdx;
+  UINT32                          RegEax;
+  CPUID_EXTENDED_CPU_SIG_EDX      RegEdx;
+  MSR_IA32_EFER_REGISTER          MsrEfer;
 
-  ZeroMem(PagingContext, sizeof(*PagingContext));
-  if (sizeof(UINTN) == sizeof(UINT64)) {
-    PagingContext->MachineType = IMAGE_FILE_MACHINE_X64;
-  } else {
-    PagingContext->MachineType = IMAGE_FILE_MACHINE_I386;
-  }
-  if ((AsmReadCr0 () & BIT31) != 0) {
-    PagingContext->ContextData.X64.PageTableBase = (AsmReadCr3 () & PAGING_4K_ADDRESS_MASK_64);
-  } else {
-    PagingContext->ContextData.X64.PageTableBase = 0;
-  }
+  //
+  // Don't retrieve current paging context from processor if in SMM mode.
+  //
+  if (!IsInSmm ()) {
+    ZeroMem (&mPagingContext, sizeof(mPagingContext));
+    if (sizeof(UINTN) == sizeof(UINT64)) {
+      mPagingContext.MachineType = IMAGE_FILE_MACHINE_X64;
+    } else {
+      mPagingContext.MachineType = IMAGE_FILE_MACHINE_I386;
+    }
+    if ((AsmReadCr0 () & CR0_PG) != 0) {
+      mPagingContext.ContextData.X64.PageTableBase = (AsmReadCr3 () & PAGING_4K_ADDRESS_MASK_64);
+    } else {
+      mPagingContext.ContextData.X64.PageTableBase = 0;
+    }
 
-  if ((AsmReadCr4 () & BIT4) != 0) {
-    PagingContext->ContextData.Ia32.Attributes |= PAGE_TABLE_LIB_PAGING_CONTEXT_IA32_X64_ATTRIBUTES_PSE;
-  }
-  if ((AsmReadCr4 () & BIT5) != 0) {
-    PagingContext->ContextData.Ia32.Attributes |= PAGE_TABLE_LIB_PAGING_CONTEXT_IA32_X64_ATTRIBUTES_PAE;
-  }
-  if ((AsmReadCr0 () & BIT16) != 0) {
-    PagingContext->ContextData.Ia32.Attributes |= PAGE_TABLE_LIB_PAGING_CONTEXT_IA32_X64_ATTRIBUTES_WP_ENABLE;
-  }
+    if ((AsmReadCr4 () & CR4_PSE) != 0) {
+      mPagingContext.ContextData.Ia32.Attributes |= PAGE_TABLE_LIB_PAGING_CONTEXT_IA32_X64_ATTRIBUTES_PSE;
+    }
+    if ((AsmReadCr4 () & CR4_PAE) != 0) {
+      mPagingContext.ContextData.Ia32.Attributes |= PAGE_TABLE_LIB_PAGING_CONTEXT_IA32_X64_ATTRIBUTES_PAE;
+    }
+    if ((AsmReadCr0 () & CR0_WP) != 0) {
+      mPagingContext.ContextData.Ia32.Attributes |= PAGE_TABLE_LIB_PAGING_CONTEXT_IA32_X64_ATTRIBUTES_WP_ENABLE;
+    }
 
-  AsmCpuid (0x80000000, &RegEax, NULL, NULL, NULL);
-  if (RegEax > 0x80000000) {
-    AsmCpuid (0x80000001, NULL, NULL, NULL, &RegEdx);
-    if ((RegEdx & BIT20) != 0) {
-      // XD supported
-      if ((AsmReadMsr64 (0xC0000080) & BIT11) != 0) {
-        // XD activated
-        PagingContext->ContextData.Ia32.Attributes |= PAGE_TABLE_LIB_PAGING_CONTEXT_IA32_X64_ATTRIBUTES_XD_ACTIVATED;
+    AsmCpuid (CPUID_EXTENDED_FUNCTION, &RegEax, NULL, NULL, NULL);
+    if (RegEax >= CPUID_EXTENDED_CPU_SIG) {
+      AsmCpuid (CPUID_EXTENDED_CPU_SIG, NULL, NULL, NULL, &RegEdx.Uint32);
+
+      if (RegEdx.Bits.NX != 0) {
+        // XD supported
+        MsrEfer.Uint64 = AsmReadMsr64(MSR_CORE_IA32_EFER);
+        if (MsrEfer.Bits.NXE != 0) {
+          // XD activated
+          mPagingContext.ContextData.Ia32.Attributes |= PAGE_TABLE_LIB_PAGING_CONTEXT_IA32_X64_ATTRIBUTES_XD_ACTIVATED;
+        }
+      }
+
+      if (RegEdx.Bits.Page1GB != 0) {
+        mPagingContext.ContextData.Ia32.Attributes |= PAGE_TABLE_LIB_PAGING_CONTEXT_IA32_X64_ATTRIBUTES_PAGE_1G_SUPPORT;
       }
     }
-    if ((RegEdx & BIT26) != 0) {
-      PagingContext->ContextData.Ia32.Attributes |= PAGE_TABLE_LIB_PAGING_CONTEXT_IA32_X64_ATTRIBUTES_PAGE_1G_SUPPORT;
-    }
   }
+
+  //
+  // This can avoid getting SMM paging context if in SMM mode. We cannot assume
+  // SMM mode shares the same paging context as DXE.
+  //
+  CopyMem (PagingContext, &mPagingContext, sizeof (mPagingContext));
 }
 
 /**
@@ -507,7 +572,14 @@ IsReadOnlyPageWriteProtected (
   VOID
   )
 {
-  return ((AsmReadCr0 () & BIT16) != 0);
+  //
+  // To avoid unforseen consequences, don't touch paging settings in SMM mode
+  // in this driver.
+  //
+  if (!IsInSmm ()) {
+    return ((AsmReadCr0 () & CR0_WP) != 0);
+  }
+  return FALSE;
 }
 
 /**
@@ -518,7 +590,13 @@ DisableReadOnlyPageWriteProtect (
   VOID
   )
 {
-  AsmWriteCr0 (AsmReadCr0() & ~BIT16);
+  //
+  // To avoid unforseen consequences, don't touch paging settings in SMM mode
+  // in this driver.
+  //
+  if (!IsInSmm ()) {
+    AsmWriteCr0 (AsmReadCr0 () & ~CR0_WP);
+  }
 }
 
 /**
@@ -529,7 +607,13 @@ EnableReadOnlyPageWriteProtect (
   VOID
   )
 {
-  AsmWriteCr0 (AsmReadCr0() | BIT16);
+  //
+  // To avoid unforseen consequences, don't touch paging settings in SMM mode
+  // in this driver.
+  //
+  if (!IsInSmm ()) {
+    AsmWriteCr0 (AsmReadCr0 () | CR0_WP);
+  }
 }
 
 /**

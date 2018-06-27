@@ -1,7 +1,7 @@
 ## @file InfPomAlignmentMisc.py
 # This file contained the routines for InfPomAlignment
 #
-# Copyright (c) 2011 - 2014, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2011 - 2018, Intel Corporation. All rights reserved.<BR>
 #
 # This program and the accompanying materials are licensed and made available 
 # under the terms and conditions of the BSD License which accompanies this 
@@ -24,7 +24,7 @@ from Library import DataType as DT
 from Library.Misc import ConvertArchList
 from Object.POM.ModuleObject import BinaryFileObject
 from Object.POM import CommonObject
-from Library.String import FORMAT_INVALID
+from Library.StringUtils import FORMAT_INVALID
 from Library.Misc import CheckGuidRegFormat
 from Logger import StringTable as ST
 
@@ -194,8 +194,7 @@ def GenBinaryData(BinaryData, BinaryObj, BinariesDict, AsBuildIns, BinaryFileObj
         # can be used for the attribute.
         # If both not have VALID_ARCHITECTURE comment and no architecturie specified, then keep it empty.
         #        
-        SupArchList = ConvertArchList(ItemObj.GetSupArchList())
-        SupArchList.sort()
+        SupArchList = sorted(ConvertArchList(ItemObj.GetSupArchList()))
         if len(SupArchList) == 1 and SupArchList[0] == 'COMMON':
             if not (len(OriSupArchList) == 1 or OriSupArchList[0] == 'COMMON'):
                 SupArchList = OriSupArchList

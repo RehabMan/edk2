@@ -28,7 +28,7 @@ import hashlib
 import subprocess
 import threading
 from datetime import datetime
-from StringIO import StringIO
+from io import BytesIO
 from Common import EdkLogger
 from Common.Misc import SaveFileOnChange
 from Common.Misc import GuidStructureByteArrayToGuidString
@@ -420,7 +420,7 @@ class DepexReport(object):
                     self.Source = "DXS"
                     break
         else:
-            self.Depex = M.DepexExpressionList.get(M.ModuleType, "")
+            self.Depex = M.DepexExpressionDict.get(M.ModuleType, "")
             self.ModuleDepex = " ".join(M.Module.DepexExpression[M.Arch, M.ModuleType])
             if not self.ModuleDepex:
                 self.ModuleDepex = "(None)"
@@ -461,12 +461,12 @@ class DepexReport(object):
         FileWrite(File, "Dependency Expression (DEPEX) from %s" % self.Source)
 
         if self.Source == "INF":
-            FileWrite(File, "%s" % self.Depex, True)
+            FileWrite(File, self.Depex, True)
             FileWrite(File, gSubSectionSep)
             FileWrite(File, "From Module INF:  %s" % self.ModuleDepex, True)
             FileWrite(File, "From Library INF: %s" % self.LibraryDepex, True)
         else:
-            FileWrite(File, "%s" % self.Depex)
+            FileWrite(File, self.Depex)
         FileWrite(File, gSubSectionEnd)
 
 ##
@@ -649,7 +649,7 @@ class ModuleReport(object):
                 cmd = ["GenFw", "--rebase", str(0), "-o", Tempfile, DefaultEFIfile]
                 try:
                     PopenObject = subprocess.Popen(' '.join(cmd), stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-                except Exception, X:
+                except Exception as X:
                     EdkLogger.error("GenFw", COMMAND_FAILURE, ExtraData="%s: %s" % (str(X), cmd[0]))
                 EndOfProcedure = threading.Event()
                 EndOfProcedure.clear()
@@ -962,7 +962,7 @@ class PcdReport(object):
                 if DscDefaultValue != DscDefaultValBak:
                     try:
                         DscDefaultValue = ValueExpressionEx(DscDefaultValue, Pcd.DatumType, self._GuidDict)(True)
-                    except BadExpression, DscDefaultValue:
+                    except BadExpression as DscDefaultValue:
                         EdkLogger.error('BuildReport', FORMAT_INVALID, "PCD Value: %s, Type: %s" %(DscDefaultValue, Pcd.DatumType))
 
                 InfDefaultValue = None
@@ -1112,7 +1112,7 @@ class PcdReport(object):
                             if IsByteArray:
                                 FileWrite(File, ' *M     %-*s = %s' % (self.MaxLen + 15, ModulePath, '{'))
                                 for Array in ArrayList:
-                                    FileWrite(File, '%s' % (Array))
+                                    FileWrite(File, Array)
                             else:
                                 FileWrite(File, ' *M     %-*s = %s' % (self.MaxLen + 15, ModulePath, ModuleDefault.strip()))
 
@@ -1138,7 +1138,7 @@ class PcdReport(object):
             if IsByteArray:
                 FileWrite(File, '    %*s = %s' % (self.MaxLen + 19, 'DSC DEFAULT', "{"))
                 for Array in ArrayList:
-                    FileWrite(File, '%s' % (Array))
+                    FileWrite(File, Array)
             else:
                 if Pcd.DatumType in TAB_PCD_CLEAN_NUMERIC_TYPES:
                     if Value.startswith(('0x', '0X')):
@@ -1152,7 +1152,7 @@ class PcdReport(object):
             if IsByteArray:
                 FileWrite(File, '    %*s = %s' % (self.MaxLen + 19, 'INF DEFAULT', "{"))
                 for Array in ArrayList:
-                    FileWrite(File, '%s' % (Array))
+                    FileWrite(File, Array)
             else:
                 if Pcd.DatumType in TAB_PCD_CLEAN_NUMERIC_TYPES:
                     if Value.startswith(('0x', '0X')):
@@ -1167,7 +1167,7 @@ class PcdReport(object):
             if IsByteArray:
                 FileWrite(File, '    %*s = %s' % (self.MaxLen + 19, 'DEC DEFAULT', "{"))
                 for Array in ArrayList:
-                    FileWrite(File, '%s' % (Array))
+                    FileWrite(File, Array)
             else:
                 if Pcd.DatumType in TAB_PCD_CLEAN_NUMERIC_TYPES:
                     if Value.startswith(('0x', '0X')):
@@ -1187,10 +1187,10 @@ class PcdReport(object):
             if IsByteArray:
                 FileWrite(File, ' %-*s   : %6s %10s = %s' % (self.MaxLen, Flag + ' ' + PcdTokenCName, TypeName, '(' + Pcd.DatumType + ')', '{'))
                 for Array in ArrayList:
-                    FileWrite(File, '%s' % (Array))
+                    FileWrite(File, Array)
             else:
                 if Pcd.DatumType in TAB_PCD_CLEAN_NUMERIC_TYPES:
-                    if Value.startswith(('0x','0X')):
+                    if Value.startswith(('0x', '0X')):
                         Value = '{} ({:d})'.format(Value, int(Value, 0))
                     else:
                         Value = "0x{:X} ({})".format(int(Value, 0), Value)
@@ -1228,7 +1228,7 @@ class PcdReport(object):
                                     else:
                                         FileWrite(File, ' %-*s   : %6s %10s %10s %10s = %s' % (self.MaxLen, Flag + ' ' + PcdTokenCName, TypeName, '(' + Pcd.DatumType + ')', '(' + SkuIdName + ')', '(' + DefaultStore + ')', '{'))
                                     for Array in ArrayList:
-                                        FileWrite(File, '%s' % (Array))
+                                        FileWrite(File, Array)
                                 else:
                                     if Pcd.DatumType in TAB_PCD_CLEAN_NUMERIC_TYPES:
                                         if Value.startswith(('0x', '0X')):
@@ -1254,7 +1254,7 @@ class PcdReport(object):
                                     else:
                                         FileWrite(File, ' %-*s   : %6s %10s %10s %10s = %s' % (self.MaxLen, ' ', TypeName, '(' + Pcd.DatumType + ')', '(' + SkuIdName + ')', '(' + DefaultStore + ')', '{'))
                                     for Array in ArrayList:
-                                        FileWrite(File, '%s' % (Array))
+                                        FileWrite(File, Array)
                                 else:
                                     if Pcd.DatumType in TAB_PCD_CLEAN_NUMERIC_TYPES:
                                         if Value.startswith(('0x', '0X')):
@@ -1286,7 +1286,7 @@ class PcdReport(object):
                             else:
                                 FileWrite(File, ' %-*s   : %6s %10s %10s = %s' % (self.MaxLen, Flag + ' ' + PcdTokenCName, TypeName, '(' + Pcd.DatumType + ')', '(' + SkuIdName + ')', "{"))
                             for Array in ArrayList:
-                                FileWrite(File, '%s' % (Array))
+                                FileWrite(File, Array)
                         else:
                             if Pcd.DatumType in TAB_PCD_CLEAN_NUMERIC_TYPES:
                                 if Value.startswith(('0x', '0X')):
@@ -1300,11 +1300,11 @@ class PcdReport(object):
                     else:
                         if IsByteArray:
                             if self.SkuSingle:
-                                FileWrite(File, ' %-*s   : %6s %10s = %s' % (self.MaxLen, ' ' , TypeName, '(' + Pcd.DatumType + ')', "{"))
+                                FileWrite(File, ' %-*s   : %6s %10s = %s' % (self.MaxLen, ' ', TypeName, '(' + Pcd.DatumType + ')', "{"))
                             else:
-                                FileWrite(File, ' %-*s   : %6s %10s %10s = %s' % (self.MaxLen, ' ' , TypeName, '(' + Pcd.DatumType + ')', '(' + SkuIdName + ')', "{"))
+                                FileWrite(File, ' %-*s   : %6s %10s %10s = %s' % (self.MaxLen, ' ', TypeName, '(' + Pcd.DatumType + ')', '(' + SkuIdName + ')', "{"))
                             for Array in ArrayList:
-                                FileWrite(File, '%s' % (Array))
+                                FileWrite(File, Array)
                         else:
                             if Pcd.DatumType in TAB_PCD_CLEAN_NUMERIC_TYPES:
                                 if Value.startswith(('0x', '0X')):
@@ -1312,9 +1312,9 @@ class PcdReport(object):
                                 else:
                                     Value = "0x{:X} ({})".format(int(Value, 0), Value)
                             if self.SkuSingle:
-                                FileWrite(File, ' %-*s   : %6s %10s = %s' % (self.MaxLen, ' ' , TypeName, '(' + Pcd.DatumType + ')', Value))
+                                FileWrite(File, ' %-*s   : %6s %10s = %s' % (self.MaxLen, ' ', TypeName, '(' + Pcd.DatumType + ')', Value))
                             else:
-                                FileWrite(File, ' %-*s   : %6s %10s %10s = %s' % (self.MaxLen, ' ' , TypeName, '(' + Pcd.DatumType + ')', '(' + SkuIdName + ')', Value))
+                                FileWrite(File, ' %-*s   : %6s %10s %10s = %s' % (self.MaxLen, ' ', TypeName, '(' + Pcd.DatumType + ')', '(' + SkuIdName + ')', Value))
                     if TypeName in ('DYNVPD', 'DEXVPD'):
                         FileWrite(File, '%*s' % (self.MaxLen + 4, SkuInfo.VpdOffset))
                     if IsStructure:
@@ -1865,8 +1865,7 @@ class FdRegionReport(object):
                 for Match in gOffsetGuidPattern.finditer(FvReport):
                     Guid = Match.group(2).upper()
                     OffsetInfo[Match.group(1)] = self._GuidsDb.get(Guid, Guid)
-                OffsetList = OffsetInfo.keys()
-                OffsetList.sort()
+                OffsetList = sorted(OffsetInfo.keys())
                 for Offset in OffsetList:
                     FileWrite (File, "%s %s" % (Offset, OffsetInfo[Offset]))
             except IOError:
@@ -1976,7 +1975,7 @@ class FdReport(object):
                     ValueList[-1] = ' {'
                     FileWrite(File, '|'.join(ValueList))
                     for Array in ArrayList:
-                        FileWrite(File, '%s' % (Array))
+                        FileWrite(File, Array)
                 else:
                     FileWrite(File, item)
             FileWrite(File, gSubSectionEnd)
@@ -2170,7 +2169,7 @@ class BuildReport(object):
     def GenerateReport(self, BuildDuration, AutoGenTime, MakeTime, GenFdsTime):
         if self.ReportFile:
             try:
-                File = StringIO('')
+                File = BytesIO('')
                 for (Wa, MaList) in self.ReportList:
                     PlatformReport(Wa, MaList, self.ReportType).GenerateReport(File, BuildDuration, AutoGenTime, MakeTime, GenFdsTime, self.ReportType)
                 Content = FileLinesSplit(File.getvalue(), gLineMaxLength)

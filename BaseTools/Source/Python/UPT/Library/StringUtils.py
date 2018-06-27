@@ -2,7 +2,7 @@
 # This file is used to define common string related functions used in parsing
 # process
 #
-# Copyright (c) 2011 - 2016, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2011 - 2018, Intel Corporation. All rights reserved.<BR>
 #
 # This program and the accompanying materials are licensed and made available
 # under the terms and conditions of the BSD License which accompanies this
@@ -13,7 +13,7 @@
 # WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #
 '''
-String
+StringUtils
 '''
 ##
 # Import Modules
@@ -632,7 +632,7 @@ def SplitString(String):
 # @param StringList:  A list for strings to be converted
 #
 def ConvertToSqlString(StringList):
-    return map(lambda s: s.replace("'", "''") , StringList)
+    return map(lambda s: s.replace("'", "''"), StringList)
 
 ## Convert To Sql String
 #
@@ -651,7 +651,7 @@ def ConvertToSqlString2(String):
 # @param Split: split character
 #
 def GetStringOfList(List, Split=' '):
-    if type(List) != type([]):
+    if not isinstance(List, type([])):
         return List
     Str = ''
     for Item in List:

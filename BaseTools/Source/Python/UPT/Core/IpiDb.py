@@ -230,7 +230,7 @@ class IpiDatabase(object):
             self._AddDp(DpObj.Header.GetGuid(), DpObj.Header.GetVersion(), \
                         NewDpPkgFileName, DpPkgFileName, RePackage)
     
-        except sqlite3.IntegrityError, DetailMsg:
+        except sqlite3.IntegrityError as DetailMsg:
             Logger.Error("UPT",
                          UPT_DB_UPDATE_ERROR,
                          ST.ERR_UPT_DB_UPDATE_ERROR,
@@ -459,7 +459,7 @@ class IpiDatabase(object):
             (select InstallPath from ModInPkgInfo where 
             ModInPkgInfo.PackageGuid ='%s' 
             and ModInPkgInfo.PackageVersion = '%s')""" \
-                            % (Pkg[0], Pkg[1], Pkg[0], Pkg[1], Pkg[0], Pkg[1],Pkg[0], Pkg[1])
+                            % (Pkg[0], Pkg[1], Pkg[0], Pkg[1], Pkg[0], Pkg[1], Pkg[0], Pkg[1])
             
             self.Cur.execute(SqlCommand)
         #
@@ -921,7 +921,7 @@ class IpiDatabase(object):
     def __ConvertToSqlString(self, StringList):
         if self.DpTable:
             pass
-        return map(lambda s: s.replace("'", "''") , StringList)
+        return map(lambda s: s.replace("'", "''"), StringList)
 
 
 

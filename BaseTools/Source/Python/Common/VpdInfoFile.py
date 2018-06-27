@@ -15,6 +15,7 @@
 # THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 # WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #
+from __future__ import print_function
 import Common.LongFilePathOs as os
 import re
 import Common.EdkLogger as EdkLogger
@@ -87,7 +88,7 @@ class VpdInfoFile:
     #
     #  @param offset integer value for VPD's offset in specific SKU.
     #
-    def Add(self, Vpd, skuname,Offset):
+    def Add(self, Vpd, skuname, Offset):
         if (Vpd is None):
             EdkLogger.error("VpdInfoFile", BuildToolError.ATTRIBUTE_UNKNOWN_ERROR, "Invalid VPD PCD entry.")
         
@@ -126,8 +127,7 @@ class VpdInfoFile:
                             "Invalid parameter FilePath: %s." % FilePath)        
 
         Content = FILE_COMMENT_TEMPLATE
-        Pcds = self._VpdArray.keys()
-        Pcds.sort()
+        Pcds = sorted(self._VpdArray.keys())
         for Pcd in Pcds:
             i = 0
             PcdTokenCName = Pcd.TokenCName
@@ -139,7 +139,7 @@ class VpdInfoFile:
                 if PcdValue == "" :
                     PcdValue  = Pcd.DefaultValue
 
-                Content += "%s.%s|%s|%s|%s|%s  \n" % (Pcd.TokenSpaceGuidCName, PcdTokenCName, skuname,str(self._VpdArray[Pcd][skuname]).strip(), str(Pcd.MaxDatumSize).strip(),PcdValue)
+                Content += "%s.%s|%s|%s|%s|%s  \n" % (Pcd.TokenSpaceGuidCName, PcdTokenCName, skuname, str(self._VpdArray[Pcd][skuname]).strip(), str(Pcd.MaxDatumSize).strip(), PcdValue)
                 i += 1
 
         return SaveFileOnChange(FilePath, Content, False)
@@ -168,8 +168,8 @@ class VpdInfoFile:
             # the line must follow output format defined in BPDG spec.
             #
             try:
-                PcdName, SkuId,Offset, Size, Value = Line.split("#")[0].split("|")
-                PcdName, SkuId,Offset, Size, Value = PcdName.strip(), SkuId.strip(),Offset.strip(), Size.strip(), Value.strip()
+                PcdName, SkuId, Offset, Size, Value = Line.split("#")[0].split("|")
+                PcdName, SkuId, Offset, Size, Value = PcdName.strip(), SkuId.strip(), Offset.strip(), Size.strip(), Value.strip()
                 TokenSpaceName, PcdTokenName = PcdName.split(".")
             except:
                 EdkLogger.error("BPDG", BuildToolError.PARSER_ERROR, "Fail to parse VPD information file %s" % FilePath)
@@ -178,7 +178,7 @@ class VpdInfoFile:
             
             if (TokenSpaceName, PcdTokenName) not in self._VpdInfo:
                 self._VpdInfo[(TokenSpaceName, PcdTokenName)] = []
-            self._VpdInfo[(TokenSpaceName, PcdTokenName)].append((SkuId,Offset, Value))
+            self._VpdInfo[(TokenSpaceName, PcdTokenName)].append((SkuId, Offset, Value))
             for VpdObject in self._VpdArray:
                 VpdObjectTokenCName = VpdObject.TokenCName
                 for PcdItem in GlobalData.MixedPcd:
@@ -210,14 +210,15 @@ class VpdInfoFile:
     #
     #  @param vpd    A given VPD PCD 
     def GetOffset(self, vpd):
-        if not self._VpdArray.has_key(vpd):
+        if vpd not in self._VpdArray:
             return None
         
         if len(self._VpdArray[vpd]) == 0:
             return None
         
         return self._VpdArray[vpd]
-    def GetVpdInfo(self,(PcdTokenName,TokenSpaceName)):
+    def GetVpdInfo(self, arg):
+        (PcdTokenName, TokenSpaceName) = arg
         return self._VpdInfo.get((TokenSpaceName, PcdTokenName))
     
 ## Call external BPDG tool to process VPD file
@@ -245,10 +246,10 @@ def CallExtenalBPDGTool(ToolPath, VpdFileName):
                                         stdout=subprocess.PIPE, 
                                         stderr= subprocess.PIPE,
                                         shell=True)
-    except Exception, X:
-        EdkLogger.error("BPDG", BuildToolError.COMMAND_FAILURE, ExtraData="%s" % (str(X)))
+    except Exception as X:
+        EdkLogger.error("BPDG", BuildToolError.COMMAND_FAILURE, ExtraData=str(X))
     (out, error) = PopenObject.communicate()
-    print out
+    print(out)
     while PopenObject.returncode is None :
         PopenObject.wait()
     

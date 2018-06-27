@@ -132,7 +132,7 @@ def _parseForGCC(lines, efifilepath, varnames):
                     if Str:
                         m = pcdPatternGcc.match(Str.strip())
                         if m is not None:
-                            varoffset.append((varname, int(m.groups(0)[0], 16) , int(sections[-1][1], 16), sections[-1][0]))
+                            varoffset.append((varname, int(m.groups(0)[0], 16), int(sections[-1][1], 16), sections[-1][0]))
 
     if not varoffset:
         return []
@@ -478,7 +478,7 @@ def SaveFileOnChange(File, Content, IsBinaryFile=True):
             Fd = open(File, "wb")
             Fd.write(Content)
             Fd.close()
-    except IOError, X:
+    except IOError as X:
         EdkLogger.error(None, FILE_CREATE_FAILURE, ExtraData='IOError %s' % X)
 
     return True
@@ -512,7 +512,7 @@ def DataRestore(File):
     try:
         Fd = open(File, 'rb')
         Data = cPickle.load(Fd)
-    except Exception, e:
+    except Exception as e:
         EdkLogger.verbose("Failed to load [%s]\n\t%s" % (File, str(e)))
         Data = None
     finally:
@@ -1278,7 +1278,7 @@ def ParseDevPathValue (Value):
     try:
         p = subprocess.Popen(Cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         out, err = p.communicate()
-    except Exception, X:
+    except Exception as X:
         raise BadExpression("DevicePath: %s" % (str(X)) )
     finally:
         subprocess._cleanup()
@@ -1291,9 +1291,9 @@ def ParseDevPathValue (Value):
     return '{' + out + '}', Size
 
 def ParseFieldValue (Value):
-    if type(Value) == type(0):
+    if isinstance(Value, type(0)):
         return Value, (Value.bit_length() + 7) / 8
-    if type(Value) <> type(''):
+    if not isinstance(Value, type('')):
         raise BadExpression('Type %s is %s' %(Value, type(Value)))
     Value = Value.strip()
     if Value.startswith(TAB_UINT8) and Value.endswith(')'):
@@ -1327,8 +1327,8 @@ def ParseFieldValue (Value):
             Value = Value[1:-1]
         try:
             Value = "'" + uuid.UUID(Value).get_bytes_le() + "'"
-        except ValueError, Message:
-            raise BadExpression('%s' % Message)
+        except ValueError as Message:
+            raise BadExpression(Message)
         Value, Size = ParseFieldValue(Value)
         return Value, 16
     if Value.startswith('L"') and Value.endswith('"'):
@@ -1469,7 +1469,7 @@ def AnalyzeDscPcd(Setting, PcdType, DataType=''):
 #         Value, Size = ParseFieldValue(Value)
         if Size:
             try:
-                int(Size,16) if Size.upper().startswith("0X") else int(Size)
+                int(Size, 16) if Size.upper().startswith("0X") else int(Size)
             except:
                 IsValid = False
                 Size = -1
@@ -1490,7 +1490,7 @@ def AnalyzeDscPcd(Setting, PcdType, DataType=''):
 
         if Size:
             try:
-                int(Size,16) if Size.upper().startswith("0X") else int(Size)
+                int(Size, 16) if Size.upper().startswith("0X") else int(Size)
             except:
                 IsValid = False
                 Size = -1
@@ -1512,7 +1512,7 @@ def AnalyzeDscPcd(Setting, PcdType, DataType=''):
             IsValid = (len(FieldList) <= 3)
         if Size:
             try:
-                int(Size,16) if Size.upper().startswith("0X") else int(Size)
+                int(Size, 16) if Size.upper().startswith("0X") else int(Size)
             except:
                 IsValid = False
                 Size = -1
@@ -1584,8 +1584,7 @@ def CheckPcdDatum(Type, Value):
             Printset.add(TAB_PRINTCHAR_BS)
             Printset.add(TAB_PRINTCHAR_NUL)
             if not set(Value).issubset(Printset):
-                PrintList = list(Printset)
-                PrintList.sort()
+                PrintList = sorted(Printset)
                 return False, "Invalid PCD string value of type [%s]; must be printable chars %s." % (Type, PrintList)
     elif Type == 'BOOLEAN':
         if Value not in ['TRUE', 'True', 'true', '0x1', '0x01', '1', 'FALSE', 'False', 'false', '0x0', '0x00', '0']:
@@ -1670,7 +1669,7 @@ def ConvertStringToByteArray(Value):
 
     Value = eval(Value)         # translate escape character
     NewValue = '{'
-    for Index in range(0,len(Value)):
+    for Index in range(0, len(Value)):
         if Unicode:
             NewValue = NewValue + str(ord(Value[Index]) % 0x10000) + ','
         else:
@@ -1747,7 +1746,7 @@ class PathClass(object):
     # @retval True  The two PathClass are the same
     #
     def __eq__(self, Other):
-        if type(Other) == type(self):
+        if isinstance(Other, type(self)):
             return self.Path == Other.Path
         else:
             return self.Path == str(Other)
@@ -1760,7 +1759,7 @@ class PathClass(object):
     # @retval -1    The first PathClass is less than the second PathClass
     # @retval 1     The first PathClass is Bigger than the second PathClass
     def __cmp__(self, Other):
-        if type(Other) == type(self):
+        if isinstance(Other, type(self)):
             OtherKey = Other.Path
         else:
             OtherKey = str(Other)
@@ -1914,28 +1913,28 @@ class PeImageClass():
         return Value
 
 class DefaultStore():
-    def __init__(self,DefaultStores ):
+    def __init__(self, DefaultStores ):
 
         self.DefaultStores = DefaultStores
-    def DefaultStoreID(self,DefaultStoreName):
-        for key,value in self.DefaultStores.items():
+    def DefaultStoreID(self, DefaultStoreName):
+        for key, value in self.DefaultStores.items():
             if value == DefaultStoreName:
                 return key
         return None
     def GetDefaultDefault(self):
         if not self.DefaultStores or "0" in self.DefaultStores:
-            return "0",TAB_DEFAULT_STORES_DEFAULT
+            return "0", TAB_DEFAULT_STORES_DEFAULT
         else:
             minvalue = min(int(value_str) for value_str in self.DefaultStores)
             return (str(minvalue), self.DefaultStores[str(minvalue)])
-    def GetMin(self,DefaultSIdList):
+    def GetMin(self, DefaultSIdList):
         if not DefaultSIdList:
             return TAB_DEFAULT_STORES_DEFAULT
         storeidset = {storeid for storeid, storename in self.DefaultStores.values() if storename in DefaultSIdList}
         if not storeidset:
             return ""
         minid = min(storeidset )
-        for sid,name in self.DefaultStores.values():
+        for sid, name in self.DefaultStores.values():
             if sid == minid:
                 return name
 class SkuClass():
@@ -1950,7 +1949,7 @@ class SkuClass():
 
         for SkuName in SkuIds:
             SkuId = SkuIds[SkuName][0]
-            skuid_num = int(SkuId,16) if SkuId.upper().startswith("0X") else int(SkuId)
+            skuid_num = int(SkuId, 16) if SkuId.upper().startswith("0X") else int(SkuId)
             if skuid_num > 0xFFFFFFFFFFFFFFFF:
                 EdkLogger.error("build", PARAMETER_INVALID,
                             ExtraData = "SKU-ID [%s] value %s exceeds the max value of UINT64"
@@ -2003,14 +2002,14 @@ class SkuClass():
             self.__SkuInherit = {}
             for item in self.SkuData.values():
                 self.__SkuInherit[item[1]]=item[2] if item[2] else "DEFAULT"
-        return self.__SkuInherit.get(skuname,"DEFAULT")
+        return self.__SkuInherit.get(skuname, "DEFAULT")
 
-    def GetSkuChain(self,sku):
+    def GetSkuChain(self, sku):
         if sku == "DEFAULT":
             return ["DEFAULT"]
         skulist = [sku]
         nextsku = sku
-        while 1:
+        while True:
             nextsku = self.GetNextSkuId(nextsku)
             skulist.append(nextsku)
             if nextsku == "DEFAULT":

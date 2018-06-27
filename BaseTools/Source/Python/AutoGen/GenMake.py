@@ -561,7 +561,7 @@ cleanlib:
 
         # convert source files and binary files to build targets
         self.ResultFileList = [str(T.Target) for T in self._AutoGenObject.CodaTargetList]
-        if len(self.ResultFileList) == 0 and len(self._AutoGenObject.SourceFileList) <> 0:
+        if len(self.ResultFileList) == 0 and len(self._AutoGenObject.SourceFileList) != 0:
             EdkLogger.error("build", AUTOGEN_ERROR, "Nothing to build",
                             ExtraData="[%s]" % str(self._AutoGenObject))
 
@@ -698,7 +698,7 @@ cleanlib:
                     Src = self.ReplaceMacro(Src)
                     Dst = self.ReplaceMacro(Dst)
                     if Dst not in self.ResultFileList:
-                        self.ResultFileList.append('%s' % Dst)
+                        self.ResultFileList.append(Dst)
                     if '%s :' %(Dst) not in self.BuildTargetList:
                         self.BuildTargetList.append("%s :" %(Dst))
                         self.BuildTargetList.append('\t' + self._CP_TEMPLATE_[self._FileType] %{'Src': Src, 'Dst': Dst})
@@ -716,7 +716,7 @@ cleanlib:
             if DepsFileString == '':
                 continue
             OutputFile = self.ReplaceMacro(OutputFile)
-            self.ResultFileList.append('%s' % OutputFile)
+            self.ResultFileList.append(OutputFile)
             DepsFileString = self.ReplaceMacro(DepsFileString)
             self.BuildTargetList.append('%s : %s' % (OutputFile, DepsFileString))
             CmdString = ' '.join(FfsCmdList).strip()
@@ -745,7 +745,7 @@ cleanlib:
                         if CmdName == 'Trim':
                             SecDepsFileList.append(os.path.join('$(DEBUG_DIR)', os.path.basename(OutputFile).replace('offset', 'efi')))
                         if OutputFile.endswith('.ui') or OutputFile.endswith('.ver'):
-                            SecDepsFileList.append(os.path.join('$(MODULE_DIR)','$(MODULE_FILE)'))
+                            SecDepsFileList.append(os.path.join('$(MODULE_DIR)', '$(MODULE_FILE)'))
                         self.FfsOutputFileList.append((OutputFile, ' '.join(SecDepsFileList), SecCmdStr))
                         if len(SecDepsFileList) > 0:
                             self.ParseSecCmd(SecDepsFileList, CmdTuple)
@@ -867,7 +867,7 @@ cleanlib:
                         for Target in BuildTargets:
                             for i, SingleCommand in enumerate(BuildTargets[Target].Commands):
                                 if FlagDict[Flag]['Macro'] in SingleCommand:
-                                    BuildTargets[Target].Commands[i] = SingleCommand.replace('$(INC)','').replace(FlagDict[Flag]['Macro'], RespMacro)
+                                    BuildTargets[Target].Commands[i] = SingleCommand.replace('$(INC)', '').replace(FlagDict[Flag]['Macro'], RespMacro)
         return RespDict
 
     def ProcessBuildTargetList(self):
@@ -1030,7 +1030,7 @@ cleanlib:
             else:
                 try:
                     Fd = open(F.Path, 'r')
-                except BaseException, X:
+                except BaseException as X:
                     EdkLogger.error("build", FILE_OPEN_FAILURE, ExtraData=F.Path + "\n\t" + str(X))
 
                 FileContent = Fd.read()

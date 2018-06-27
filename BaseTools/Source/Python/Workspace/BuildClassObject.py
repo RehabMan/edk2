@@ -70,23 +70,23 @@ class PcdClassObject(object):
         if IsDsc:
             self.DscDefaultValue = Value
         self.PcdValueFromComm = ""
-        self.DefinitionPosition = ("","")
+        self.DefinitionPosition = ("", "")
 
     ## Get the maximum number of bytes
     def GetPcdMaxSize(self):
         if self.DatumType in TAB_PCD_NUMERIC_TYPES:
             return MAX_SIZE_TYPE[self.DatumType]
 
-        MaxSize = int(self.MaxDatumSize,10) if self.MaxDatumSize else 0
+        MaxSize = int(self.MaxDatumSize, 10) if self.MaxDatumSize else 0
         if self.PcdValueFromComm:
             if self.PcdValueFromComm.startswith("{") and self.PcdValueFromComm.endswith("}"):
-                return max([len(self.PcdValueFromComm.split(",")),MaxSize])
+                return max([len(self.PcdValueFromComm.split(",")), MaxSize])
             elif self.PcdValueFromComm.startswith("\"") or self.PcdValueFromComm.startswith("\'"):
-                return max([len(self.PcdValueFromComm)-2+1,MaxSize])
+                return max([len(self.PcdValueFromComm)-2+1, MaxSize])
             elif self.PcdValueFromComm.startswith("L\""):
-                return max([2*(len(self.PcdValueFromComm)-3+1),MaxSize])
+                return max([2*(len(self.PcdValueFromComm)-3+1), MaxSize])
             else:
-                return max([len(self.PcdValueFromComm),MaxSize])
+                return max([len(self.PcdValueFromComm), MaxSize])
         return MaxSize
 
     ## Get the number of bytes
@@ -178,7 +178,7 @@ class StructurePcd(PcdClassObject):
         self.DefaultValues[FieldName] = [Value.strip(), FileName, LineNo]
         return self.DefaultValues[FieldName]
 
-    def SetDecDefaultValue(self,DefaultValue):
+    def SetDecDefaultValue(self, DefaultValue):
         self.DefaultValueFromDec = DefaultValue
     def AddOverrideValue (self, FieldName, Value, SkuName, DefaultStoreName, FileName="", LineNo=0):
         if SkuName not in self.SkuOverrideValues:
@@ -217,7 +217,7 @@ class StructurePcd(PcdClassObject):
         self.DscRawValue = PcdObject.DscRawValue if PcdObject.DscRawValue else self.DscRawValue
         self.PcdValueFromComm = PcdObject.PcdValueFromComm if PcdObject.PcdValueFromComm else self.PcdValueFromComm
         self.DefinitionPosition = PcdObject.DefinitionPosition if PcdObject.DefinitionPosition else self.DefinitionPosition
-        if type(PcdObject) is StructurePcd:
+        if isinstance(PcdObject, StructurePcd):
             self.StructuredPcdIncludeFile = PcdObject.StructuredPcdIncludeFile if PcdObject.StructuredPcdIncludeFile else self.StructuredPcdIncludeFile
             self.PackageDecs = PcdObject.PackageDecs if PcdObject.PackageDecs else self.PackageDecs
             self.DefaultValues = PcdObject.DefaultValues if PcdObject.DefaultValues else self.DefaultValues

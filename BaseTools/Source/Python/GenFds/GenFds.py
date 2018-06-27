@@ -15,6 +15,7 @@
 ##
 # Import Modules
 #
+from __future__ import print_function
 from optparse import OptionParser
 import sys
 import Common.LongFilePathOs as os
@@ -26,7 +27,7 @@ from Workspace.WorkspaceDatabase import WorkspaceDatabase
 from Workspace.BuildClassObject import PcdClassObject
 import RuleComplexFile
 from EfiSection import EfiSection
-import StringIO
+from io import BytesIO
 import Common.TargetTxtClassObject as TargetTxtClassObject
 import Common.ToolDefClassObject as ToolDefClassObject
 from Common.DataType import *
@@ -335,10 +336,10 @@ def main():
         """Display FV space info."""
         GenFds.DisplayFvSpaceInfo(FdfParserObj)
 
-    except FdfParser.Warning, X:
+    except FdfParser.Warning as X:
         EdkLogger.error(X.ToolName, FORMAT_INVALID, File=X.FileName, Line=X.LineNumber, ExtraData=X.Message, RaiseError=False)
         ReturnCode = FORMAT_INVALID
-    except FatalError, X:
+    except FatalError as X:
         if Options.debug is not None:
             import traceback
             EdkLogger.quiet(traceback.format_exc())
@@ -541,13 +542,13 @@ class GenFds :
         if GenFds.OnlyGenerateThisFv is not None and GenFds.OnlyGenerateThisFv.upper() in GenFdsGlobalVariable.FdfParser.Profile.FvDict:
             FvObj = GenFdsGlobalVariable.FdfParser.Profile.FvDict[GenFds.OnlyGenerateThisFv.upper()]
             if FvObj is not None:
-                Buffer = StringIO.StringIO()
+                Buffer = BytesIO()
                 FvObj.AddToBuffer(Buffer)
                 Buffer.close()
                 return
         elif GenFds.OnlyGenerateThisFv is None:
             for FvObj in GenFdsGlobalVariable.FdfParser.Profile.FvDict.values():
-                Buffer = StringIO.StringIO('')
+                Buffer = BytesIO('')
                 FvObj.AddToBuffer(Buffer)
                 Buffer.close()
         
@@ -689,11 +690,11 @@ class GenFds :
         ModuleDict = BuildDb.BuildObject[DscFile, TAB_COMMON, GenFdsGlobalVariable.TargetName, GenFdsGlobalVariable.ToolChainTag].Modules
         for Key in ModuleDict:
             ModuleObj = BuildDb.BuildObject[Key, TAB_COMMON, GenFdsGlobalVariable.TargetName, GenFdsGlobalVariable.ToolChainTag]
-            print ModuleObj.BaseName + ' ' + ModuleObj.ModuleType
+            print(ModuleObj.BaseName + ' ' + ModuleObj.ModuleType)
 
     def GenerateGuidXRefFile(BuildDb, ArchList, FdfParserObj):
         GuidXRefFileName = os.path.join(GenFdsGlobalVariable.FvDir, "Guid.xref")
-        GuidXRefFile = StringIO.StringIO('')
+        GuidXRefFile = BytesIO('')
         GuidDict = {}
         ModuleList = []
         FileGuidList = []
@@ -784,7 +785,7 @@ class GenFds :
                         if not Name:
                             continue
 
-                        Name = ' '.join(Name) if type(Name) == type([]) else Name
+                        Name = ' '.join(Name) if isinstance(Name, type([])) else Name
                         GuidXRefFile.write("%s %s\n" %(FileStatementGuid, Name))
 
        # Append GUIDs, Protocols, and PPIs to the Xref file

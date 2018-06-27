@@ -1,7 +1,7 @@
 ## @file
 # Common routines used by all tools
 #
-# Copyright (c) 2011 - 2014, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2011 - 2018, Intel Corporation. All rights reserved.<BR>
 #
 # This program and the accompanying materials are licensed and made available 
 # under the terms and conditions of the BSD License which accompanies this 
@@ -45,7 +45,7 @@ from Library.DataType import TAB_LANGUAGE_EN_US
 from Library.DataType import TAB_LANGUAGE_EN
 from Library.DataType import TAB_LANGUAGE_EN_X
 from Library.DataType import TAB_UNI_FILE_SUFFIXS
-from Library.String import GetSplitValueList
+from Library.StringUtils import GetSplitValueList
 from Library.ParserValidate import IsValidHexVersion
 from Library.ParserValidate import IsValidPath
 from Object.POM.CommonObject import TextObject
@@ -514,7 +514,7 @@ class PathClass(object):
     # Check whether PathClass are the same
     #
     def __eq__(self, Other):
-        if type(Other) == type(self):
+        if isinstance(Other, type(self)):
             return self.Path == Other.Path
         else:
             return self.Path == str(Other)
@@ -819,11 +819,11 @@ def ConvertArchList(ArchList):
     if not ArchList:
         return NewArchList
 
-    if type(ArchList) == list:
+    if isinstance(ArchList, list):
         for Arch in ArchList:
             Arch = Arch.upper()
             NewArchList.append(Arch)
-    elif type(ArchList) == str:
+    elif isinstance(ArchList, str):
         ArchList = ArchList.upper()
         NewArchList.append(ArchList)
 

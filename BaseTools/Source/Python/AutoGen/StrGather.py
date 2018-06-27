@@ -18,7 +18,7 @@ import re
 import Common.EdkLogger as EdkLogger
 from Common.BuildToolError import *
 from UniClassObject import *
-from StringIO import StringIO
+from io import BytesIO
 from struct import pack, unpack
 from Common.LongFilePathSupport import OpenLongFilePath as open
 
@@ -94,7 +94,7 @@ PRINTABLE_LANGUAGE_NAME_STRING_NAME = '$PRINTABLE_LANGUAGE_NAME'
 # @retval:       The formatted hex string
 #
 def DecToHexStr(Dec, Digit = 8):
-    return '0x{0:0{1}X}'.format(Dec,Digit)
+    return '0x{0:0{1}X}'.format(Dec, Digit)
 
 ## Convert a dec number to a hex list
 #
@@ -109,7 +109,7 @@ def DecToHexStr(Dec, Digit = 8):
 # @retval:       A list for formatted hex string
 #
 def DecToHexList(Dec, Digit = 8):
-    Hex = '{0:0{1}X}'.format(Dec,Digit)
+    Hex = '{0:0{1}X}'.format(Dec, Digit)
     return ["0x" + Hex[Bit:Bit + 2] for Bit in range(Digit - 2, -1, -2)]
 
 ## Convert a acsii string to a hex list
@@ -258,7 +258,7 @@ def GetFilteredLanguage(UniLanguageList, LanguageFilterList):
         # first check for exact match
         if Language in UniLanguageList:
             if Language not in UniLanguageListFiltered:
-                UniLanguageListFiltered += [Language]
+                UniLanguageListFiltered.append(Language)
         # find the first one with the same/equivalent primary tag
         else:
             if Language.find('-') != -1:
@@ -280,7 +280,7 @@ def GetFilteredLanguage(UniLanguageList, LanguageFilterList):
 
                 if PrimaryTag == UniLanguagePrimaryTag:
                     if UniLanguage not in UniLanguageListFiltered:
-                        UniLanguageListFiltered += [UniLanguage]
+                        UniLanguageListFiltered.append(UniLanguage)
                     break
             else:
                 # Here is rule 3 for "get best language"
@@ -292,10 +292,10 @@ def GetFilteredLanguage(UniLanguageList, LanguageFilterList):
                     for UniLanguage in UniLanguageList:
                         if UniLanguage.startswith('en-') or UniLanguage.startswith('eng-'):
                             if UniLanguage not in UniLanguageListFiltered:
-                                UniLanguageListFiltered += [UniLanguage]
+                                UniLanguageListFiltered.append(UniLanguage)
                             break
                     else:
-                        UniLanguageListFiltered += [DefaultTag]
+                        UniLanguageListFiltered.append(DefaultTag)
     return  UniLanguageListFiltered
 
 
@@ -341,7 +341,7 @@ def CreateCFileContent(BaseName, UniObjectClass, IsCompatibleMode, UniBinBuffer,
         if Language not in UniLanguageListFiltered:
             continue
         
-        StringBuffer = StringIO()
+        StringBuffer = BytesIO()
         StrStringValue = ''
         ArrayLength = 0
         NumberOfUseOtherLangDef = 0

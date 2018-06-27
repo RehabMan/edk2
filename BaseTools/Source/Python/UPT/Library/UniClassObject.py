@@ -14,6 +14,7 @@
 """
 Collect all defined strings in multiple uni files
 """
+from __future__ import print_function
 
 ##
 # Import Modules
@@ -23,7 +24,7 @@ import distutils.util
 from Logger import ToolError
 from Logger import Log as EdkLogger
 from Logger import StringTable as ST
-from Library.String import GetLineNo
+from Library.StringUtils import GetLineNo
 from Library.Misc import PathClass
 from Library.Misc import GetCharIndexOutStr
 from Library import DataType as DT
@@ -327,9 +328,9 @@ class UniFileClassObject(object):
         if len(Lang) != 3:
             try:
                 FileIn = codecs.open(File.Path, mode='rb', encoding='utf_8').readlines()
-            except UnicodeError, Xstr:
+            except UnicodeError as Xstr:
                 FileIn = codecs.open(File.Path, mode='rb', encoding='utf_16').readlines()
-            except UnicodeError, Xstr:
+            except UnicodeError as Xstr:
                 FileIn = codecs.open(File.Path, mode='rb', encoding='utf_16_le').readlines()
             except:
                 EdkLogger.Error("Unicode File Parser", 
@@ -436,7 +437,7 @@ class UniFileClassObject(object):
 
         try:
             FileIn = codecs.open(File.Path, mode='rb', encoding='utf_8').readlines()
-        except UnicodeError, Xstr:
+        except UnicodeError as Xstr:
             FileIn = codecs.open(File.Path, mode='rb', encoding='utf_16').readlines()
         except UnicodeError:
             FileIn = codecs.open(File.Path, mode='rb', encoding='utf_16_le').readlines()
@@ -730,7 +731,7 @@ class UniFileClassObject(object):
                     EdkLogger.Error("Unicode File Parser", ToolError.FORMAT_INVALID, ExtraData=File.Path)
                 NewLines.append(Line)
             else:
-                print Line
+                print(Line)
                 EdkLogger.Error("Unicode File Parser", ToolError.FORMAT_INVALID, ExtraData=File.Path)
                     
         if StrName and not StrName.split()[1].startswith(u'STR_'):
@@ -1022,12 +1023,12 @@ class UniFileClassObject(object):
     # Show the instance itself
     #
     def ShowMe(self):
-        print self.LanguageDef
+        print(self.LanguageDef)
         #print self.OrderedStringList
         for Item in self.OrderedStringList:
-            print Item
+            print(Item)
             for Member in self.OrderedStringList[Item]:
-                print str(Member)
+                print(str(Member))
     
     #
     # Read content from '!include' UNI file 
@@ -1042,7 +1043,7 @@ class UniFileClassObject(object):
                              ExtraData=FilaPath)
         try:
             FileIn = codecs.open(FilaPath, mode='rb', encoding='utf_8').readlines()
-        except UnicodeError, Xstr:
+        except UnicodeError as Xstr:
             FileIn = codecs.open(FilaPath, mode='rb', encoding='utf_16').readlines()
         except UnicodeError:
             FileIn = codecs.open(FilaPath, mode='rb', encoding='utf_16_le').readlines()

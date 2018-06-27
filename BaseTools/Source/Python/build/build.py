@@ -16,9 +16,10 @@
 ##
 # Import Modules
 #
+from __future__ import print_function
 import Common.LongFilePathOs as os
 import re
-import StringIO
+from io import BytesIO
 import sys
 import glob
 import time
@@ -53,7 +54,7 @@ import Common.EdkLogger
 import Common.GlobalData as GlobalData
 from GenFds.GenFds import GenFds
 
-from collections import OrderedDict,defaultdict
+from collections import OrderedDict, defaultdict
 
 # Version and Copyright
 VersionNumber = "0.60" + ' ' + gBUILD_VERSION
@@ -76,7 +77,7 @@ TmpTableDict = {}
 #   Otherwise, False is returned
 #
 def IsToolInPath(tool):
-    if os.environ.has_key('PATHEXT'):
+    if 'PATHEXT' in os.environ:
         extns = os.environ['PATHEXT'].split(os.path.pathsep)
     else:
         extns = ('',)
@@ -105,7 +106,7 @@ def CheckEnvVariable():
 
     WorkspaceDir = os.path.normcase(os.path.normpath(os.environ["WORKSPACE"]))
     if not os.path.exists(WorkspaceDir):
-        EdkLogger.error("build", FILE_NOT_FOUND, "WORKSPACE doesn't exist", ExtraData="%s" % WorkspaceDir)
+        EdkLogger.error("build", FILE_NOT_FOUND, "WORKSPACE doesn't exist", ExtraData=WorkspaceDir)
     elif ' ' in WorkspaceDir:
         EdkLogger.error("build", FORMAT_NOT_SUPPORTED, "No space is allowed in WORKSPACE path",
                         ExtraData=WorkspaceDir)
@@ -117,7 +118,7 @@ def CheckEnvVariable():
     if mws.PACKAGES_PATH:
         for Path in mws.PACKAGES_PATH:
             if not os.path.exists(Path):
-                EdkLogger.error("build", FILE_NOT_FOUND, "One Path in PACKAGES_PATH doesn't exist", ExtraData="%s" % Path)
+                EdkLogger.error("build", FILE_NOT_FOUND, "One Path in PACKAGES_PATH doesn't exist", ExtraData=Path)
             elif ' ' in Path:
                 EdkLogger.error("build", FORMAT_NOT_SUPPORTED, "No space is allowed in PACKAGES_PATH", ExtraData=Path)
 
@@ -304,7 +305,7 @@ def LaunchCommand(Command, WorkingDir):
         if EndOfProcedure is not None:
             EndOfProcedure.set()
         if Proc is None:
-            if type(Command) != type(""):
+            if not isinstance(Command, type("")):
                 Command = " ".join(Command)
             EdkLogger.error("build", COMMAND_FAILURE, "Failed to start command", ExtraData="%s [%s]" % (Command, WorkingDir))
 
@@ -315,7 +316,7 @@ def LaunchCommand(Command, WorkingDir):
 
     # check the return code of the program
     if Proc.returncode != 0:
-        if type(Command) != type(""):
+        if not isinstance(Command, type("")):
             Command = " ".join(Command)
         # print out the Response file and its content when make failure
         RespFile = os.path.join(WorkingDir, 'OUTPUT', 'respfilelist.txt')
@@ -525,7 +526,7 @@ class BuildTask:
                     BuildTask._Thread.acquire(True)
 
                     # start a new build thread
-                    Bo,Bt = BuildTask._ReadyQueue.popitem()
+                    Bo, Bt = BuildTask._ReadyQueue.popitem()
 
                     # move into running queue
                     BuildTask._RunningQueueLock.acquire()
@@ -548,7 +549,7 @@ class BuildTask:
                 EdkLogger.debug(EdkLogger.DEBUG_8, "Threads [%s]" % ", ".join(Th.getName() for Th in threading.enumerate()))
                 # avoid tense loop
                 time.sleep(0.1)
-        except BaseException, X:
+        except BaseException as X:
             #
             # TRICK: hide the output of threads left runing, so that the user can
             #        catch the error message easily
@@ -839,7 +840,7 @@ class Build():
         self.HashSkipModules = []
         self.Db_Flag = False
         self.LaunchPrebuildFlag = False
-        self.PlatformBuildPath = os.path.join(GlobalData.gConfDirectory,'.cache', '.PlatformBuild')
+        self.PlatformBuildPath = os.path.join(GlobalData.gConfDirectory, '.cache', '.PlatformBuild')
         if BuildOptions.CommandLength:
             GlobalData.gCommandMaxLength = BuildOptions.CommandLength
 
@@ -1132,7 +1133,7 @@ class Build():
             # and preserve them for the rest of the main build step, because the child process environment will
             # evaporate as soon as it exits, we cannot get it in build step.
             #
-            PrebuildEnvFile = os.path.join(GlobalData.gConfDirectory,'.cache','.PrebuildEnv')
+            PrebuildEnvFile = os.path.join(GlobalData.gConfDirectory, '.cache', '.PrebuildEnv')
             if os.path.isfile(PrebuildEnvFile):
                 os.remove(PrebuildEnvFile)
             if os.path.isfile(self.PlatformBuildPath):
@@ -1172,7 +1173,7 @@ class Build():
                 f = open(PrebuildEnvFile)
                 envs = f.readlines()
                 f.close()
-                envs = itertools.imap(lambda l: l.split('=',1), envs)
+                envs = itertools.imap(lambda l: l.split('=', 1), envs)
                 envs = itertools.ifilter(lambda l: len(l) == 2, envs)
                 envs = itertools.imap(lambda l: [i.strip() for i in l], envs)
                 os.environ.update(dict(envs))
@@ -1324,7 +1325,7 @@ class Build():
             try:
                 #os.rmdir(AutoGenObject.BuildDir)
                 RemoveDirectory(AutoGenObject.BuildDir, True)
-            except WindowsError, X:
+            except WindowsError as X:
                 EdkLogger.error("build", FILE_DELETE_FAILURE, ExtraData=str(X))
         return True
 
@@ -1414,7 +1415,7 @@ class Build():
             try:
                 #os.rmdir(AutoGenObject.BuildDir)
                 RemoveDirectory(AutoGenObject.BuildDir, True)
-            except WindowsError, X:
+            except WindowsError as X:
                 EdkLogger.error("build", FILE_DELETE_FAILURE, ExtraData=str(X))
         return True
 
@@ -1543,7 +1544,7 @@ class Build():
                         GuidString = MatchGuid.group()
                         if GuidString.upper() in ModuleList:
                             Line = Line.replace(GuidString, ModuleList[GuidString.upper()].Name)
-                    MapBuffer.write('%s' % (Line))
+                    MapBuffer.write(Line)
                     #
                     # Add the debug image full path.
                     #
@@ -1781,7 +1782,7 @@ class Build():
                             if not Ma.IsLibrary:
                                 ModuleList[Ma.Guid.upper()] = Ma
 
-                    MapBuffer = StringIO('')
+                    MapBuffer = BytesIO('')
                     if self.LoadFixAddress != 0:
                         #
                         # Rebase module to the preferred memory address before GenFds
@@ -1939,7 +1940,7 @@ class Build():
                             if not Ma.IsLibrary:
                                 ModuleList[Ma.Guid.upper()] = Ma
 
-                    MapBuffer = StringIO('')
+                    MapBuffer = BytesIO('')
                     if self.LoadFixAddress != 0:
                         #
                         # Rebase module to the preferred memory address before GenFds
@@ -2126,7 +2127,7 @@ class Build():
                     #
                     # Rebase module to the preferred memory address before GenFds
                     #
-                    MapBuffer = StringIO('')
+                    MapBuffer = BytesIO('')
                     if self.LoadFixAddress != 0:
                         self._CollectModuleMapBuffer(MapBuffer, ModuleList)
 
@@ -2195,7 +2196,7 @@ class Build():
                     toolsFile = os.path.join(FvDir, 'GuidedSectionTools.txt')
                     toolsFile = open(toolsFile, 'wt')
                     for guidedSectionTool in guidAttribs:
-                        print >> toolsFile, ' '.join(guidedSectionTool)
+                        print(' '.join(guidedSectionTool), file=toolsFile)
                     toolsFile.close()
 
     ## Returns the full path of the tool.
@@ -2357,7 +2358,7 @@ def MyOptionParser():
     Parser.add_option("-D", "--define", action="append", type="string", dest="Macros", help="Macro: \"Name [= Value]\".")
 
     Parser.add_option("-y", "--report-file", action="store", dest="ReportFile", help="Create/overwrite the report to the specified filename.")
-    Parser.add_option("-Y", "--report-type", action="append", type="choice", choices=['PCD','LIBRARY','FLASH','DEPEX','BUILD_FLAGS','FIXED_ADDRESS','HASH','EXECUTION_ORDER'], dest="ReportType", default=[],
+    Parser.add_option("-Y", "--report-type", action="append", type="choice", choices=['PCD', 'LIBRARY', 'FLASH', 'DEPEX', 'BUILD_FLAGS', 'FIXED_ADDRESS', 'HASH', 'EXECUTION_ORDER'], dest="ReportType", default=[],
         help="Flags that control the type of build report to generate.  Must be one of: [PCD, LIBRARY, FLASH, DEPEX, BUILD_FLAGS, FIXED_ADDRESS, HASH, EXECUTION_ORDER].  "\
              "To specify more than one flag, repeat this option on the command line and the default flag set is [PCD, LIBRARY, FLASH, DEPEX, HASH, BUILD_FLAGS, FIXED_ADDRESS]")
     Parser.add_option("-F", "--flag", action="store", type="string", dest="Flag",
@@ -2500,14 +2501,14 @@ def Main():
         # All job done, no error found and no exception raised
         #
         BuildError = False
-    except FatalError, X:
+    except FatalError as X:
         if MyBuild is not None:
             # for multi-thread build exits safely
             MyBuild.Relinquish()
         if Option is not None and Option.debug is not None:
             EdkLogger.quiet("(Python %s on %s) " % (platform.python_version(), sys.platform) + traceback.format_exc())
         ReturnCode = X.args[0]
-    except Warning, X:
+    except Warning as X:
         # error from Fdf parser
         if MyBuild is not None:
             # for multi-thread build exits safely

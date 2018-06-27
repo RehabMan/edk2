@@ -84,10 +84,6 @@ STATIC CONST SHELL_PARAM_ITEM ParamList[] = {
   {L"-A", TypeFlag},   // -A   All, Cooked
   {L"-R", TypeFlag},   // -R   RAW All
   {L"-s", TypeFlag},   // -s   Summary
-#if PROFILING_IMPLEMENTED
-  {L"-P", TypeFlag},   // -P   Dump Profile Data
-  {L"-T", TypeFlag},   // -T   Dump Trace Data
-#endif // PROFILING_IMPLEMENTED
   {L"-x", TypeFlag},   // -x   eXclude Cumulative Items
   {L"-i", TypeFlag},   // -i   Display Identifier
   {L"-c", TypeValue},  // -c   Display cumulative data.
@@ -116,9 +112,6 @@ DumpStatistics( void )
   ShellPrintHiiEx (-1, -1, NULL, STRING_TOKEN (STR_DP_STATS_NUMHANDLES), mDpHiiHandle,    SummaryData.NumHandles, SummaryData.NumTrace - SummaryData.NumHandles);
   ShellPrintHiiEx (-1, -1, NULL, STRING_TOKEN (STR_DP_STATS_NUMPEIMS), mDpHiiHandle,      SummaryData.NumPEIMs);
   ShellPrintHiiEx (-1, -1, NULL, STRING_TOKEN (STR_DP_STATS_NUMGLOBALS), mDpHiiHandle,    SummaryData.NumGlobal);
-#if PROFILING_IMPLEMENTED
-  ShellPrintHiiEx (-1, -1, NULL, STRING_TOKEN (STR_DP_STATS_NUMPROFILE), mDpHiiHandle,    SummaryData.NumProfile);
-#endif // PROFILING_IMPLEMENTED
   SHELL_FREE_NON_NULL (StringPtr);
   SHELL_FREE_NON_NULL (StringPtrUnknown);
 }
@@ -392,7 +385,7 @@ BuildCachedGuidHandleTable (
     FreePool (HandleBuffer);
     HandleBuffer = NULL;
   }
-  return Status;
+  return EFI_SUCCESS;
 }
 
 /**
@@ -437,11 +430,25 @@ GetMeasurementInfo (
       ASSERT(FALSE);
     }
 
-    if (AsciiStrCmp (Measurement->Token, ALit_PEIM) == 0) {
-      Measurement->Handle         = &(((FPDT_GUID_EVENT_RECORD *)RecordHeader)->Guid);
+    if (Measurement->Token != NULL && AsciiStrCmp (Measurement->Token, ALit_PEIM) == 0) {
+      Measurement->Handle         = &(((FPDT_DYNAMIC_STRING_EVENT_RECORD *)RecordHeader)->Guid);
     } else {
       GetHandleFormModuleGuid(ModuleGuid, &StartHandle);
-      Measurement->Handle         = StartHandle;
+      Measurement->Handle = StartHandle;
+      //
+      // When no perf entry to record the PEI and DXE phase,
+      // For start image, we need detect the PEIM and non PEIM here.
+      //
+      if (Measurement->Token == NULL) {
+        if (StartHandle == NULL && !IsZeroGuid (ModuleGuid)) {
+          Measurement->Token      = ALit_PEIM;
+          Measurement->Module     = ALit_PEIM;
+          Measurement->Handle     = ModuleGuid;
+        } else {
+          Measurement->Token      = ALit_START_IMAGE;
+          Measurement->Module     = ALit_START_IMAGE;
+        }
+      }
     }
     break;
 
@@ -490,11 +497,23 @@ GetMeasurementInfo (
 
     Measurement->Module           = ((FPDT_DYNAMIC_STRING_EVENT_RECORD *)RecordHeader)->String;
 
-    if (AsciiStrCmp (Measurement->Token, ALit_PEIM) == 0) {
+    if (Measurement->Token != NULL && AsciiStrCmp (Measurement->Token, ALit_PEIM) == 0) {
       Measurement->Handle         = &(((FPDT_DYNAMIC_STRING_EVENT_RECORD *)RecordHeader)->Guid);
     } else {
       GetHandleFormModuleGuid(ModuleGuid, &StartHandle);
       Measurement->Handle = StartHandle;
+      //
+      // When no perf entry to record the PEI and DXE phase,
+      // For start image, we need detect the PEIM and non PEIM here.
+      //
+      if (Measurement->Token == NULL  && (Measurement->Identifier == MODULE_START_ID || Measurement->Identifier == MODULE_END_ID)) {
+        if (StartHandle == NULL && !IsZeroGuid (ModuleGuid)) {
+          Measurement->Token      = ALit_PEIM;
+          Measurement->Handle     = ModuleGuid;
+        } else {
+          Measurement->Token      = ALit_START_IMAGE;
+        }
+      }
     }
     break;
 
@@ -560,6 +579,20 @@ GetMeasurementInfo (
     Measurement->Handle = StartHandle;
     break;
 
+  case FPDT_DUAL_GUID_STRING_EVENT_TYPE:
+    ModuleGuid                    = &(((FPDT_DUAL_GUID_STRING_EVENT_RECORD *)RecordHeader)->Guid1);
+    Measurement->Identifier       = ((UINT32)((FPDT_DUAL_GUID_STRING_EVENT_RECORD *)RecordHeader)->ProgressID);
+    if (IsStart) {
+      Measurement->StartTimeStamp = ((FPDT_DUAL_GUID_STRING_EVENT_RECORD *)RecordHeader)->Timestamp;
+    } else {
+      Measurement->EndTimeStamp   = ((FPDT_DUAL_GUID_STRING_EVENT_RECORD *)RecordHeader)->Timestamp;
+    }
+    Measurement->Token            = ((FPDT_DUAL_GUID_STRING_EVENT_RECORD *)RecordHeader)->String;
+    Measurement->Module           = ((FPDT_DUAL_GUID_STRING_EVENT_RECORD *)RecordHeader)->String;
+    GetHandleFormModuleGuid(ModuleGuid, &StartHandle);
+    Measurement->Handle = StartHandle;
+    break;
+
   default:
     break;
   }
@@ -584,6 +617,14 @@ SearchMeasurement (
           CompareGuid(mMeasurementList[Index].Handle, EndMeasureMent->Handle) &&
           (AsciiStrCmp (mMeasurementList[Index].Token, EndMeasureMent->Token) == 0) &&
           (AsciiStrCmp (mMeasurementList[Index].Module, EndMeasureMent->Module) == 0)) {
+        mMeasurementList[Index].EndTimeStamp = EndMeasureMent->EndTimeStamp;
+        break;
+      }
+    } else if (EndMeasureMent->Identifier == PERF_CROSSMODULE_END_ID) {
+      if (mMeasurementList[Index].EndTimeStamp == 0 &&
+         (AsciiStrCmp (mMeasurementList[Index].Token, EndMeasureMent->Token) == 0) &&
+         (AsciiStrCmp (mMeasurementList[Index].Module, EndMeasureMent->Module) == 0) &&
+         mMeasurementList[Index].Identifier == PERF_CROSSMODULE_START_ID) {
         mMeasurementList[Index].EndTimeStamp = EndMeasureMent->EndTimeStamp;
         break;
       }
@@ -627,25 +668,32 @@ BuildMeasurementList (
     StartProgressId   = ((FPDT_GUID_EVENT_RECORD *)StartRecordEvent)->ProgressID;
 
     //
+    // If the record with ProgressId 0, the record doesn't appear in pairs. The timestamp in the record is the EndTimeStamp, its StartTimeStamp is 0.
     // If the record is the start record, fill the info to the measurement in the mMeasurementList.
     // If the record is the end record, find the related start measurement in the mMeasurementList and fill the EndTimeStamp.
     //
-    if (((StartProgressId >= PERF_EVENTSIGNAL_START_ID && ((StartProgressId & 0x000F) == 0)) ||
+    if (StartProgressId == 0) {
+      GetMeasurementInfo (RecordHeader, FALSE, &(mMeasurementList[mMeasurementNum]));
+      mMeasurementNum ++;
+    } else if (((StartProgressId >= PERF_EVENTSIGNAL_START_ID && ((StartProgressId & 0x000F) == 0)) ||
         (StartProgressId < PERF_EVENTSIGNAL_START_ID && ((StartProgressId & 0x0001) != 0)))) {
       //
       // Since PEIM and StartImage has same Type and ID when PCD PcdEdkiiFpdtStringRecordEnableOnly = FALSE
       // So we need to identify these two kinds of record through different phase.
       //
-      if (AsciiStrCmp (((FPDT_DYNAMIC_STRING_EVENT_RECORD *)StartRecordEvent)->String, ALit_PEI) == 0) {
-        mPeiPhase = TRUE;
-      } else if (AsciiStrCmp (((FPDT_DYNAMIC_STRING_EVENT_RECORD *)StartRecordEvent)->String, ALit_DXE) == 0) {
-        mDxePhase = TRUE;
-        mPeiPhase = FALSE;
+      if(StartProgressId == PERF_CROSSMODULE_START_ID ){
+        if (AsciiStrCmp (((FPDT_DYNAMIC_STRING_EVENT_RECORD *)StartRecordEvent)->String, ALit_PEI) == 0) {
+          mPeiPhase = TRUE;
+        } else if (AsciiStrCmp (((FPDT_DYNAMIC_STRING_EVENT_RECORD *)StartRecordEvent)->String, ALit_DXE) == 0) {
+          mDxePhase = TRUE;
+          mPeiPhase = FALSE;
+        }
       }
       // Get measurement info form the start record to the mMeasurementList.
       GetMeasurementInfo (RecordHeader, TRUE, &(mMeasurementList[mMeasurementNum]));
       mMeasurementNum ++;
     } else {
+      ZeroMem(&MeasureMent, sizeof(MEASUREMENT_RECORD));
       GetMeasurementInfo (RecordHeader, FALSE, &MeasureMent);
       SearchMeasurement (&MeasureMent);
     }
@@ -672,6 +720,23 @@ InitCumulativeData (
     CumData[Index].MaxDur = 0;
     CumData[Index].Duration = 0;
   }
+}
+
+/**
+  Initialize the Summary data.
+
+**/
+VOID
+InitSummaryData (
+  VOID
+  )
+{
+  SummaryData.NumTrace      = 0;
+  SummaryData.NumIncomplete = 0;
+  SummaryData.NumSummary    = 0;
+  SummaryData.NumHandles    = 0;
+  SummaryData.NumPEIMs      = 0;
+  SummaryData.NumGlobal     = 0;
 }
 
 /**
@@ -703,8 +768,6 @@ RunDp (
   BOOLEAN                   VerboseMode;
   BOOLEAN                   AllMode;
   BOOLEAN                   RawMode;
-  BOOLEAN                   TraceMode;
-  BOOLEAN                   ProfileMode;
   BOOLEAN                   ExcludeMode;
   BOOLEAN                   CumulativeMode;
   CONST CHAR16              *CustomCumulativeToken;
@@ -718,8 +781,6 @@ RunDp (
   VerboseMode = FALSE;
   AllMode     = FALSE;
   RawMode     = FALSE;
-  TraceMode   = FALSE;
-  ProfileMode = FALSE;
   ExcludeMode = FALSE;
   CumulativeMode = FALSE;
   CustomCumulativeData = NULL;
@@ -730,35 +791,6 @@ RunDp (
   //
   Status = ShellInitialize();
   ASSERT_EFI_ERROR(Status);
-
-  //
-  // DP dump performance data by parsing FPDT table in ACPI table.
-  // Folloing 3 steps are to get the measurement form the FPDT table.
-  //
-
-  //
-  //1. Get FPDT from ACPI table.
-  //
-  Status = GetBootPerformanceTable ();
-  if (EFI_ERROR(Status)) {
-    return Status;
-  }
-
-  //
-  //2. Cache the ModuleGuid and hanlde mapping table.
-  //
-  Status = BuildCachedGuidHandleTable();
-  if (EFI_ERROR (Status)) {
-    return Status;
-  }
-
-  //
-  //3. Build the measurement array form the FPDT records.
-  //
-  Status = BuildMeasurementList ();
-  if (EFI_ERROR(Status)) {
-    return Status;
-  }
 
   //
   // Process Command Line arguments
@@ -776,10 +808,6 @@ RunDp (
   SummaryMode = (BOOLEAN) (ShellCommandLineGetFlag (ParamPackage, L"-S") || ShellCommandLineGetFlag (ParamPackage, L"-s"));
   AllMode     = ShellCommandLineGetFlag (ParamPackage, L"-A");
   RawMode     = ShellCommandLineGetFlag (ParamPackage, L"-R");
-#if PROFILING_IMPLEMENTED
-  TraceMode   = ShellCommandLineGetFlag (ParamPackage, L"-T");
-  ProfileMode = ShellCommandLineGetFlag (ParamPackage, L"-P");
-#endif  // PROFILING_IMPLEMENTED
   ExcludeMode = ShellCommandLineGetFlag (ParamPackage, L"-x");
   mShowId     = ShellCommandLineGetFlag (ParamPackage, L"-i");
   CumulativeMode = ShellCommandLineGetFlag (ParamPackage, L"-c");
@@ -802,13 +830,37 @@ RunDp (
     mInterestThreshold = StrDecimalToUint64(CmdLineArg);
   }
 
-  // Handle Flag combinations and default behaviors
-  // If both TraceMode and ProfileMode are FALSE, set them both to TRUE
-  if ((! TraceMode) && (! ProfileMode)) {
-    TraceMode   = TRUE;
-#if PROFILING_IMPLEMENTED
-    ProfileMode = TRUE;
-#endif  // PROFILING_IMPLEMENTED
+
+  //
+  // DP dump performance data by parsing FPDT table in ACPI table.
+  // Folloing 3 steps are to get the measurement form the FPDT table.
+  //
+
+  //
+  //1. Get FPDT from ACPI table.
+  //
+  Status = GetBootPerformanceTable ();
+  if (EFI_ERROR (Status)) {
+    ShellStatus = Status;
+    goto Done;
+  }
+
+  //
+  //2. Cache the ModuleGuid and hanlde mapping table.
+  //
+  Status = BuildCachedGuidHandleTable();
+  if (EFI_ERROR (Status)) {
+    ShellStatus = Status;
+    goto Done;
+  }
+
+  //
+  //3. Build the measurement array form the FPDT records.
+  //
+  Status = BuildMeasurementList ();
+  if (EFI_ERROR (Status)) {
+    ShellStatus = SHELL_OUT_OF_RESOURCES;
+    goto Done;
   }
 
   //
@@ -817,13 +869,19 @@ RunDp (
   InitCumulativeData ();
 
   //
+  // Initialize the Summary data.
+  //
+  InitSummaryData ();
+
+  //
   // Init the custom cumulative data.
   //
   CustomCumulativeToken = ShellCommandLineGetValue (ParamPackage, L"-c");
   if (CustomCumulativeToken != NULL) {
     CustomCumulativeData = AllocateZeroPool (sizeof (PERF_CUM_DATA));
     if (CustomCumulativeData == NULL) {
-      return SHELL_OUT_OF_RESOURCES;
+      ShellStatus = SHELL_OUT_OF_RESOURCES;
+      goto Done;
     }
     CustomCumulativeData->MinDur = PERF_MAXDUR;
     CustomCumulativeData->MaxDur = 0;
@@ -832,8 +890,8 @@ RunDp (
     NameSize = StrLen (CustomCumulativeToken) + 1;
     CustomCumulativeData->Name   = AllocateZeroPool (NameSize);
     if (CustomCumulativeData->Name == NULL) {
-      FreePool (CustomCumulativeData);
-      return SHELL_OUT_OF_RESOURCES;
+      ShellStatus = SHELL_OUT_OF_RESOURCES;
+      goto Done;
     }
     UnicodeStrToAsciiStrS (CustomCumulativeToken, CustomCumulativeData->Name, NameSize);
   }
@@ -892,67 +950,45 @@ RunDp (
 ****    R Raw         --  S option is ignored
 ****    s Summary     --  Modifies "Cooked" output only
 ****    Cooked (Default)
-****
-****  The All, Raw, and Cooked modes are modified by the Trace and Profile
-****  options.
-****    !T && !P  := (0) Default, Both are displayed
-****     T && !P  := (1) Only Trace records are displayed
-****    !T &&  P  := (2) Only Profile records are displayed
-****     T &&  P  := (3) Same as Default, both are displayed
 ****************************************************************************/
   GatherStatistics (CustomCumulativeData);
   if (CumulativeMode) {                       
     ProcessCumulative (CustomCumulativeData);
   } else if (AllMode) {
-    if (TraceMode) {
-      Status = DumpAllTrace( Number2Display, ExcludeMode);
-      if (Status == EFI_ABORTED) {
-        ShellStatus = SHELL_ABORTED;
-        goto Done;
-      }
-    }
-    if (ProfileMode) {
-      DumpAllProfile( Number2Display, ExcludeMode);
+    Status = DumpAllTrace( Number2Display, ExcludeMode);
+    if (Status == EFI_ABORTED) {
+      ShellStatus = SHELL_ABORTED;
+      goto Done;
     }
   } else if (RawMode) {
-    if (TraceMode) {
-      Status = DumpRawTrace( Number2Display, ExcludeMode);
-      if (Status == EFI_ABORTED) {
-        ShellStatus = SHELL_ABORTED;
-        goto Done;
-      }
-    }
-    if (ProfileMode) {
-      DumpRawProfile( Number2Display, ExcludeMode);
+    Status = DumpRawTrace( Number2Display, ExcludeMode);
+    if (Status == EFI_ABORTED) {
+      ShellStatus = SHELL_ABORTED;
+      goto Done;
     }
   } else {
     //------------- Begin Cooked Mode Processing
-    if (TraceMode) {
-      ProcessPhases ();
-      if ( ! SummaryMode) {
-        Status = ProcessHandles ( ExcludeMode);
-        if (Status == EFI_ABORTED) {
-          ShellStatus = SHELL_ABORTED;
-          goto Done;
-        }
-
-        Status = ProcessPeims ();
-        if (Status == EFI_ABORTED) {
-          ShellStatus = SHELL_ABORTED;
-          goto Done;
-        }
-
-        Status = ProcessGlobal ();
-        if (Status == EFI_ABORTED) {
-          ShellStatus = SHELL_ABORTED;
-          goto Done;
-        }
-
-        ProcessCumulative (NULL);
+    ProcessPhases ();
+    if ( ! SummaryMode) {
+      Status = ProcessHandles ( ExcludeMode);
+      if (Status == EFI_ABORTED) {
+        ShellStatus = SHELL_ABORTED;
+        goto Done;
       }
-    }
-    if (ProfileMode) {
-      DumpAllProfile( Number2Display, ExcludeMode);
+
+      Status = ProcessPeims ();
+      if (Status == EFI_ABORTED) {
+        ShellStatus = SHELL_ABORTED;
+        goto Done;
+      }
+
+      Status = ProcessGlobal ();
+      if (Status == EFI_ABORTED) {
+        ShellStatus = SHELL_ABORTED;
+        goto Done;
+      }
+
+       ProcessCumulative (NULL);
     }
   } //------------- End of Cooked Mode Processing
   if ( VerboseMode || SummaryMode) {
